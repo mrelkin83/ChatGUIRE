@@ -13,6 +13,9 @@ RUN pnpm --filter @saas/api deploy --legacy --prod /deploy
 RUN cp -a /app/apps/api/dist /deploy/
 
 FROM node:20-alpine AS runner
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable
 WORKDIR /app
 COPY --from=builder /deploy /app
 EXPOSE 3001
