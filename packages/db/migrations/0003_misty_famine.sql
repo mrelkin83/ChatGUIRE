@@ -1,0 +1,1 @@
+ALTER TABLE "bot_menus" ALTER COLUMN "trigger_keywords" DROP DEFAULT;

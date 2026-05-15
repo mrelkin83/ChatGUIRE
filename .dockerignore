@@ -1,0 +1,52 @@
+# Logs
+*.log
+npm-debug.log*
+.pnpm-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Dependency directories
+node_modules/
+.pnpm-store/
+
+# Build outputs
+.next/
+dist/
+build/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.docker/
+
+# Git
+.git/
+.gitignore
+
+# Tests
+coverage/
+*.test.ts
+*.test.tsx
+
+# Misc
+*.md
+.parcel-cache

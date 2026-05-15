@@ -1,0 +1,29 @@
+# Build stage
+FROM node:20-alpine AS build
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable
+WORKDIR /app
+COPY . .
+RUN apk add --no-cache python3 make g++
+RUN pnpm install --frozen-lockfile
+RUN pnpm --filter @saas/web build
+
+# Production stage
+FROM node:20-alpine AS runner
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable
+WORKDIR /app
+COPY --from=build /app/apps/web/.next ./apps/web/.next
+COPY --from=build /app/apps/web/package.json ./apps/web/package.json
+COPY --from=build /app/apps/web/next.config.js ./apps/web/next.config.js
+COPY --from=build /app/apps/web/.env.local ./apps/web/.env.local
+COPY --from=build /app/package.json ./package.json
+COPY --from=build /app/pnpm-workspace.yaml ./pnpm-workspace.yaml
+COPY --from=build /app/turbo.json ./turbo.json
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/packages ./packages
+
+EXPOSE 3000
+CMD ["pnpm", "--filter", "@saas/web", "start"]

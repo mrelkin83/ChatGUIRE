@@ -1,0 +1,19 @@
+FROM node:20-alpine AS builder
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable
+WORKDIR /app
+COPY . .
+RUN apk add --no-cache python3 make g++
+RUN pnpm install
+RUN pnpm --filter @saas/api build
+
+ENV CI=true
+RUN pnpm --filter @saas/api deploy --legacy --prod /deploy
+RUN cp -a /app/apps/api/dist /deploy/
+
+FROM node:20-alpine AS runner
+WORKDIR /app
+COPY --from=builder /deploy /app
+EXPOSE 3001
+CMD ["npx", "tsx", "dist/server.js"]
