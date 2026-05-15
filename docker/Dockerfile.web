@@ -6,7 +6,7 @@ RUN corepack enable
 WORKDIR /app
 COPY . .
 RUN apk add --no-cache python3 make g++
-RUN pnpm install --frozen-lockfile
+RUN pnpm install
 RUN pnpm --filter @saas/web build
 
 # Production stage
