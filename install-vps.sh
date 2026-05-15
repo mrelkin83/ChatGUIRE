@@ -251,11 +251,11 @@ echo "[6/10] Preparando PostgreSQL y ejecutando migraciones..."
 docker compose exec postgres psql -U "$DB_USER" -d "$DB_NAME" -c "CREATE EXTENSION IF NOT EXISTS vector;"
 
 # Ejecutar migraciones de Drizzle (aplica automáticamente los archivos SQL en orden)
-docker compose run --rm api pnpm --filter @saas/db db:migrate
+docker compose run --rm api sh -c "cd node_modules/@saas/db && npx drizzle-kit migrate"
 
 if [[ -f "$INSTALL_DIR/packages/db/src/seed/demo-seed.ts" ]]; then
   if ask_yes_no "¿Ejecutar seed de demostración?"; then
-    docker compose run --rm api pnpm --filter @saas/db db:seed
+    docker compose run --rm api sh -c "cd node_modules/@saas/db && npx tsx src/seed/demo-seed.ts"
   fi
 fi
 
