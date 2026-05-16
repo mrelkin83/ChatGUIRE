@@ -465,3 +465,4 @@ MIT © 2025 — ChatGÜIRE
 ¿Preguntas o problemas? Abre un [issue](https://github.com/mrelkin83/ChatG-IRE/issues) en GitHub.
 
 **Hecho con 💛 en Colombia**
+# ChatGUIRE
