@@ -1,8 +1,9 @@
 #!/bin/bash
 #
-# ChatGÜIRE — Auto-Instalador VPS v1.2
+# ChatGÜIRE — Auto-Instalador VPS v1.3
 # Fixes: dpkg lock, resume state, auto-passwords, DNS no-bloqueante,
-#        backup path, migracion Drizzle, API_PORT correcto.
+#        backup path, migracion Drizzle, API_PORT correcto,
+#        nginx SSL ordering, detección Cloudflare, migración producción.
 #
 set -euo pipefail
 IFS=$'\n\t'
@@ -16,7 +17,7 @@ LOG_FILE="$PROJECT_DIR/.install-log"
 CREDENTIALS_FILE="$PROJECT_DIR/.credentials"
 DOMAIN=""
 ENCRYPTION_KEY=""
-COMPLETED_STEP=0      # FIX: representa último paso COMPLETADO (no iniciado)
+COMPLETED_STEP=0
 TOTAL_STEPS=8
 
 # ─── Utilidades ─────────────────────────────────────────────────────────────
@@ -32,7 +33,6 @@ error_exit() {
     exit 1
 }
 
-# FIX: state guarda COMPLETED_STEP (último paso exitoso)
 save_state() {
     cat > "$STATE_FILE" <<EOF
 DOMAIN="$DOMAIN"
@@ -56,7 +56,6 @@ show_step() {
     printf "\n[%d/%d] %s %s\n" "$step" "$TOTAL_STEPS" "$desc" "$status"
 }
 
-# FIX: generar contraseña segura sin interacción
 gen_password() {
     openssl rand -hex 20
 }
@@ -76,18 +75,28 @@ prompt_required() {
     printf -v "$var_name" '%s' "$value"
 }
 
-# FIX: dpkg lock — esperar hasta 2 minutos antes de fallar
 wait_for_dpkg_lock() {
-    local retries=24  # 24 × 5s = 2 minutos
+    local retries=24
     while fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || \
           fuser /var/lib/apt/lists/lock >/dev/null 2>&1; do
         log "⏳ Esperando lock de dpkg (otro proceso apt activo)..."
         sleep 5
         retries=$((retries - 1))
         if [[ $retries -eq 0 ]]; then
-            error_exit "dpkg lock no se liberó después de 2 minutos. Ejecuta: sudo kill $(fuser /var/lib/dpkg/lock-frontend 2>/dev/null | awk '{print $1}') y reintenta."
+            error_exit "dpkg lock no se liberó después de 2 minutos."
         fi
     done
+}
+
+# Detecta si una IP pertenece a rangos de Cloudflare proxy
+is_cloudflare_proxy() {
+    local ip="$1"
+    [[ -z "$ip" ]] && return 1
+    if echo "$ip" | grep -qE \
+        '^(104\.1[6-9]\.|104\.2[0-6]\.|172\.6[4-9]\.|172\.7[01]\.|162\.158\.|103\.21\.244\.|103\.22\.200\.|103\.31\.[0-4]\.|141\.101\.|188\.114\.|190\.93\.|197\.234\.|198\.41\.)'; then
+        return 0
+    fi
+    return 1
 }
 
 # ─── Rollback ───────────────────────────────────────────────────────────────
@@ -105,7 +114,7 @@ rollback() {
 show_banner() {
     cat <<'EOF'
 ┌─────────────────────────────────────────────────────────────┐
-│  🤖 ChatGÜIRE — Instalador VPS v1.2                         │
+│  🤖 ChatGÜIRE — Instalador VPS v1.3                         │
 │  Auto-configurado • Sin contraseñas manuales                │
 └─────────────────────────────────────────────────────────────┘
 EOF
@@ -157,7 +166,7 @@ step2_dependencies() {
         ufw fail2ban openssl jq bc dnsutils psmisc \
         ca-certificates gnupg lsb-release
 
-    # ── Docker Engine (repo oficial — docker-compose-plugin no está en Ubuntu repos)
+    # ── Docker Engine (repo oficial)
     if ! command -v docker &>/dev/null; then
         log "Instalando Docker desde repositorio oficial..."
         install -m 0755 -d /etc/apt/keyrings
@@ -177,7 +186,6 @@ $(. /etc/os-release && echo "$VERSION_CODENAME") stable" \
             docker-buildx-plugin docker-compose-plugin
     else
         log "Docker ya instalado — verificando compose plugin..."
-        # Instalar compose-plugin si falta
         if ! docker compose version &>/dev/null 2>&1; then
             apt-get install -y -qq docker-compose-plugin 2>/dev/null || \
             apt-get install -y -qq docker-compose 2>/dev/null || true
@@ -194,20 +202,16 @@ $(. /etc/os-release && echo "$VERSION_CODENAME") stable" \
     done
     log "✅ Docker v$(docker version --format '{{.Server.Version}}')"
 
-    # Verificar que 'docker compose' funciona (V2 plugin)
     if ! docker compose version &>/dev/null 2>&1; then
-        # Fallback: instalar docker-compose V1 clásico
         curl -fsSL "https://github.com/docker/compose/releases/download/v2.24.5/docker-compose-linux-$(uname -m)" \
             -o /usr/local/bin/docker-compose
         chmod +x /usr/local/bin/docker-compose
-        # Crear alias para que 'docker compose' funcione
         mkdir -p /usr/local/lib/docker/cli-plugins
         ln -sf /usr/local/bin/docker-compose /usr/local/lib/docker/cli-plugins/docker-compose
         log "✅ Docker Compose V2 instalado manualmente"
     fi
     log "✅ Docker Compose $(docker compose version --short)"
 
-    # UFW — solo añadir reglas si no están ya presentes (evita destruir configuración existente)
     if ! ufw status | grep -q "Status: active"; then
         ufw default deny incoming
         ufw default allow outgoing
@@ -231,16 +235,29 @@ step3_domain_ssl() {
         prompt_required DOMAIN "Ingresa tu dominio (ej: chat.miempresa.com)"
     fi
 
-    # FIX: DNS check solo informativo, no bloqueante (default = continuar)
     local vps_ip domain_ip
     vps_ip=$(curl -fsSL https://ipinfo.io/ip 2>/dev/null || hostname -I | awk '{print $1}')
     domain_ip=$(dig +short "$DOMAIN" @8.8.8.8 2>/dev/null | tail -1 || true)
 
+    local cloudflare_proxy=false
     if [[ "$domain_ip" != "$vps_ip" ]]; then
-        log "⚠️  DNS: $DOMAIN resuelve a '$domain_ip', este VPS es $vps_ip"
-        log "   Crea un A record: $DOMAIN → $vps_ip"
-        log "   Continuando instalación. Let's Encrypt fallará si el DNS no propagó."
-        log "   Puedes re-ejecutar solo el SSL después: certbot --nginx -d $DOMAIN"
+        if is_cloudflare_proxy "$domain_ip"; then
+            cloudflare_proxy=true
+            log "⚠️  CLOUDFLARE PROXY DETECTADO: $DOMAIN → $domain_ip (Cloudflare)"
+            log "   Let's Encrypt fallará con el proxy naranja activo."
+            log "   ─── ANTES DE CONTINUAR: ───────────────────────────────────"
+            log "   1. Ve a dash.cloudflare.com → DNS → registro A de $DOMAIN"
+            log "   2. Cambia el ícono naranja ☁️  a gris (solo DNS, sin proxy)"
+            log "   3. Espera ~1 min a que propague"
+            log "   4. Re-ejecuta: certbot certonly --webroot -w /var/www/certbot -d $DOMAIN --non-interactive --agree-tos -m admin@$DOMAIN"
+            log "   5. Luego reactiva el proxy naranja si lo deseas"
+            log "   ──────────────────────────────────────────────────────────"
+        else
+            log "⚠️  DNS: $DOMAIN resuelve a '$domain_ip', este VPS es $vps_ip"
+            log "   Crea un A record: $DOMAIN → $vps_ip"
+            log "   Continuando instalación. Let's Encrypt fallará si el DNS no propagó."
+            log "   Re-ejecuta SSL después: certbot certonly --webroot -w /var/www/certbot -d $DOMAIN --non-interactive --agree-tos -m admin@$DOMAIN"
+        fi
     else
         log "✅ DNS verificado: $DOMAIN → $vps_ip"
     fi
@@ -248,9 +265,9 @@ step3_domain_ssl() {
     local email="admin@${DOMAIN}"
     log "Email Let's Encrypt: $email (puedes cambiarlo en .env después)"
 
-    # Nginx config
     mkdir -p /etc/nginx/sites-available /etc/nginx/sites-enabled /var/www/certbot
 
+    # ── Config HTTPS completa (solo se activa DESPUÉS de obtener el cert) ──
     cat > "/etc/nginx/sites-available/chatguire" <<NGINX
 upstream api_backend {
     server 127.0.0.1:3001;
@@ -328,10 +345,7 @@ server {
 }
 NGINX
 
-    ln -sf "/etc/nginx/sites-available/chatguire" /etc/nginx/sites-enabled/chatguire
-    rm -f /etc/nginx/sites-enabled/default
-
-    # Nginx con HTTP-only hasta obtener cert (evita error si no hay cert aún)
+    # ── Config HTTP temporal (solo para el challenge de certbot) ──
     cat > "/etc/nginx/sites-available/chatguire-http" <<NGINX_HTTP
 server {
     listen 80;
@@ -341,30 +355,45 @@ server {
 }
 NGINX_HTTP
 
-    # Activar config HTTP temporal para obtener cert
+    # CRÍTICO: activar SOLO la config HTTP. No activar HTTPS hasta tener el cert.
+    # Si se activa la config HTTPS sin cert, nginx -t falla y nginx no sirve nada.
+    rm -f /etc/nginx/sites-enabled/chatguire        # Quitar HTTPS (puede existir de run previo)
+    rm -f /etc/nginx/sites-enabled/default
     ln -sf "/etc/nginx/sites-available/chatguire-http" /etc/nginx/sites-enabled/chatguire-http
+
     if nginx -t >/dev/null 2>&1; then
-        systemctl reload nginx
+        systemctl reload nginx 2>/dev/null || systemctl start nginx
+        log "✅ Nginx HTTP activo (sirviendo challenge de certbot)"
     else
-        log "⚠️  Configuración Nginx temporal con errores (esperando certificado)"
+        log "⚠️  Error en config Nginx HTTP — revisando..."
+        nginx -t
     fi
 
-    # Certbot (no-interactivo, no falla si DNS no está listo)
-    if ! certbot certificates 2>/dev/null | grep -q "$DOMAIN"; then
+    # ── Certbot (solo si el DNS apunta directamente al VPS) ──
+    if [[ "$cloudflare_proxy" == true ]]; then
+        log "⏭️  Saltando certbot — Cloudflare proxy activo. Sigue las instrucciones de arriba."
+    elif ! certbot certificates 2>/dev/null | grep -q "$DOMAIN"; then
         certbot certonly --webroot -w /var/www/certbot -d "$DOMAIN" \
             --non-interactive --agree-tos -m "$email" 2>/dev/null && {
+
             log "✅ Certificado SSL obtenido"
-            # Activar config HTTPS completa
+            # Ahora sí activar config HTTPS completa
             rm -f /etc/nginx/sites-enabled/chatguire-http
-            nginx -t >/dev/null 2>&1 && systemctl reload nginx || log "⚠️  Nginx reload falló tras obtener certificado"
+            ln -sf "/etc/nginx/sites-available/chatguire" /etc/nginx/sites-enabled/chatguire
+            nginx -t && systemctl reload nginx && log "✅ Nginx HTTPS activo" || \
+                log "⚠️  Nginx reload falló tras obtener certificado"
+
         } || {
-            log "⚠️  Let's Encrypt no obtuvo cert (DNS posiblemente no propagó)"
-            log "   Re-ejecuta cuando el DNS esté listo: certbot --nginx -d $DOMAIN"
+            log "⚠️  Let's Encrypt no obtuvo cert"
+            log "   Re-ejecuta cuando el DNS esté listo:"
+            log "   certbot certonly --webroot -w /var/www/certbot -d $DOMAIN --non-interactive --agree-tos -m $email"
+            log "   Luego: rm /etc/nginx/sites-enabled/chatguire-http && ln -sf /etc/nginx/sites-available/chatguire /etc/nginx/sites-enabled/chatguire && nginx -t && systemctl reload nginx"
         }
     else
         log "✅ Certificado SSL ya existe"
         rm -f /etc/nginx/sites-enabled/chatguire-http
-        nginx -t >/dev/null 2>&1 && systemctl reload nginx || log "⚠️  Nginx reload falló"
+        ln -sf "/etc/nginx/sites-available/chatguire" /etc/nginx/sites-enabled/chatguire
+        nginx -t && systemctl reload nginx || log "⚠️  Nginx reload falló"
     fi
 
     # Auto-renew
@@ -384,7 +413,6 @@ step4_project_config() {
         error_exit "No hay repo en $PROJECT_DIR. Clona primero: git clone https://github.com/mrelkin83/ChatGUIRE.git $PROJECT_DIR"
     fi
 
-    # FIX: auto-generar todas las contraseñas
     ENCRYPTION_KEY=$(generate_encryption_key)
     local db_pass redis_pass jwt_secret webhook_secret
     db_pass=$(gen_password)
@@ -394,7 +422,6 @@ step4_project_config() {
 
     log "✅ Contraseñas generadas automáticamente"
 
-    # FIX: usar API_PORT (no PORT) para que server.ts lo lea
     cat > "$PROJECT_DIR/.env" <<EOF
 # ChatGÜIRE — Variables de entorno producción
 # Generado: $(date '+%Y-%m-%d %H:%M:%S')
@@ -449,7 +476,6 @@ EOF
 
     chmod 600 "$PROJECT_DIR/.env"
 
-    # Guardar credenciales para mostrar al final
     cat > "$CREDENTIALS_FILE" <<EOF
 # ChatGÜIRE — Credenciales generadas $(date '+%Y-%m-%d %H:%M:%S')
 # ⚠️  GUARDA ESTO EN UN PASSWORD MANAGER Y ELIMINA ESTE ARCHIVO
@@ -491,7 +517,7 @@ step5_build() {
     done
     log "✅ PostgreSQL listo"
 
-    # FIX: Esperar a que el contenedor api esté corriendo antes de ejecutar migraciones
+    # Esperar a que el container API esté corriendo
     log "⏳ Esperando contenedor API..."
     retries=30
     until docker compose -f "$COMPOSE_FILE" ps -q api >/dev/null 2>&1 && \
@@ -502,24 +528,39 @@ step5_build() {
     done
     log "✅ API container corriendo"
 
-    # FIX: usar Drizzle (no Prisma)
+    # ── Migraciones Drizzle ──────────────────────────────────────────────
+    # drizzle-kit solo existe en devDependencies (no en el container de producción).
+    # Se usa un container efímero de Node con el código fuente del monorepo.
     log "Ejecutando migraciones Drizzle..."
-    docker compose -f "$COMPOSE_FILE" exec -T api sh -c '
-      cd /app && npx drizzle-kit migrate --config=node_modules/@saas/db/drizzle.config.ts
-    ' 2>/dev/null || {
-        log "⚠️  Migración automática falló. Ejecuta manualmente desde el host:"
-        log "   docker run --rm -v $PROJECT_DIR:/repo -w /repo -e DATABASE_URL=\$DATABASE_URL node:22-alpine sh -c \"corepack enable && pnpm install && pnpm --filter @saas/db db:migrate\""
+    local db_url
+    db_url=$(grep '^DATABASE_URL=' "$PROJECT_DIR/.env" | cut -d= -f2-)
+
+    # Detectar nombre de red del compose
+    local compose_network
+    compose_network=$(docker compose -f "$COMPOSE_FILE" ps -q postgres 2>/dev/null \
+        | xargs -r docker inspect --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}}{{end}}' 2>/dev/null \
+        | head -1 || echo "chatguire-network")
+
+    docker run --rm \
+        --network "$compose_network" \
+        -e DATABASE_URL="$db_url" \
+        -v "${PROJECT_DIR}:/app" \
+        -w /app \
+        node:22-alpine \
+        sh -c "
+            corepack enable && corepack prepare pnpm@10.26.1 --activate 2>/dev/null
+            pnpm install --frozen-lockfile --silent 2>/dev/null
+            pnpm --filter @saas/db db:migrate
+        " 2>&1 | tee -a "$LOG_FILE" && log "✅ Migraciones ejecutadas" || {
+        log "⚠️  Migración automática falló — continuando. Ejecuta manualmente:"
+        log "   cd $PROJECT_DIR && docker run --rm --network $compose_network -e DATABASE_URL='$db_url' -v \$(pwd):/app -w /app node:22-alpine sh -c 'corepack enable && pnpm install --frozen-lockfile && pnpm --filter @saas/db db:migrate'"
     }
 
-    # FIX: Crear SuperAdmin si no existe
+    # ── SuperAdmin ───────────────────────────────────────────────────────
     log "Creando SuperAdmin..."
-    local admin_pass=""
-    if [[ -f "$CREDENTIALS_FILE" ]]; then
-        admin_pass=$(grep SUPERADMIN_PASS "$CREDENTIALS_FILE" | cut -d= -f2 || true)
-    fi
-    if [[ -z "$admin_pass" ]]; then
-        admin_pass=$(openssl rand -base64 18 | tr -d '=+/')
-    fi
+    local admin_pass
+    admin_pass=$(openssl rand -base64 18 | tr -d '=+/')
+
     docker compose -f "$COMPOSE_FILE" exec -T api node -e "
       (async () => {
         try {
@@ -527,19 +568,24 @@ step5_build() {
           const postgres = require('postgres');
           const sql = postgres(process.env.DATABASE_URL);
           const hash = await bcrypt.hash('${admin_pass}', 12);
-          await sql\`INSERT INTO superadmin_users (email, password_hash, full_name, role) VALUES ('admin@${DOMAIN}', \${hash}, 'Super Admin', 'superadmin') ON CONFLICT (email) DO NOTHING\`;
+          await sql\`INSERT INTO superadmin_users (email, password_hash, full_name, role)
+            VALUES ('admin@${DOMAIN}', \${hash}, 'Super Admin', 'superadmin')
+            ON CONFLICT (email) DO NOTHING\`;
           await sql.end();
-          console.log('SUPERADMIN_PASS=${admin_pass}');
+          process.exit(0);
         } catch (e) {
-          console.error('Error creando superadmin:', e.message);
+          console.error('Error:', e.message);
           process.exit(1);
         }
       })();
-    " > /tmp/.superadmin_out 2>/dev/null && {
-        grep SUPERADMIN_PASS /tmp/.superadmin_out >> "$CREDENTIALS_FILE" && chmod 600 "$CREDENTIALS_FILE"
+    " 2>/dev/null && {
+        # Guardar el password REAL en .credentials para mostrarlo en el resumen
+        echo "SUPERADMIN_PASS=${admin_pass}" >> "$CREDENTIALS_FILE"
+        chmod 600 "$CREDENTIALS_FILE"
         log "✅ SuperAdmin creado (admin@${DOMAIN})"
     } || {
-        log "⚠️  No se pudo crear SuperAdmin automáticamente. Crea uno manualmente desde /superadmin."
+        log "⚠️  No se pudo crear SuperAdmin automáticamente."
+        log "   Crea uno manualmente desde /superadmin después del despliegue."
     }
 
     log "✅ Aplicación desplegada"
@@ -552,8 +598,14 @@ step6_health() {
     local retries=20
     local api_ok=false db_ok=false redis_ok=false
 
+    # Cargar REDIS_PASSWORD del .env
+    local redis_pw=""
+    if [[ -f "$PROJECT_DIR/.env" ]]; then
+        redis_pw=$(grep '^REDIS_PASSWORD=' "$PROJECT_DIR/.env" | cut -d= -f2)
+        export REDIS_PASSWORD="$redis_pw"
+    fi
+
     while [[ $retries -gt 0 ]]; do
-        # FIX: verificar por localhost (no depende de DNS/SSL)
         if curl -fsSL "http://127.0.0.1:3001/health" > /dev/null 2>&1; then
             api_ok=true
         fi
@@ -562,7 +614,7 @@ step6_health() {
             db_ok=true
         fi
         if docker compose -f "$COMPOSE_FILE" exec -T redis \
-              redis-cli -a "$REDIS_PASSWORD" ping > /dev/null 2>&1; then
+              redis-cli -a "${redis_pw}" ping > /dev/null 2>&1; then
             redis_ok=true
         fi
 
@@ -583,10 +635,8 @@ step6_health() {
 step7_backups() {
     show_step 7 "Configurando backups..."
 
-    # Crear directorio de scripts si no existe
     mkdir -p "$PROJECT_DIR/scripts"
 
-    # FIX: copiar todos los scripts esenciales a scripts/
     for script in backup.sh restore.sh update.sh health-check.sh verify-install.sh; do
         if [[ -f "$PROJECT_DIR/$script" ]] && [[ ! -f "$PROJECT_DIR/scripts/$script" ]]; then
             cp "$PROJECT_DIR/$script" "$PROJECT_DIR/scripts/$script"
@@ -599,7 +649,6 @@ step7_backups() {
 0 2 * * * root cd ${PROJECT_DIR} && bash scripts/backup.sh >> /var/log/chatguire-backup.log 2>&1
 EOF
 
-    # FIX: backup inicial con path correcto
     if [[ -f "$PROJECT_DIR/scripts/backup.sh" ]]; then
         cd "$PROJECT_DIR" && bash scripts/backup.sh && log "✅ Backup inicial completado" || \
             log "⚠️  Backup inicial falló (se reintentará en cron)"
@@ -617,13 +666,16 @@ EOF
 step8_summary() {
     show_step 8 "Resumen de instalación" "✅ COMPLETADO"
 
-    local admin_pass
-    admin_pass=$(openssl rand -base64 18 | tr -d '=+/')
-
-    # Cargar credenciales guardadas en paso 4
-    local enc_key=""
+    # Leer el password REAL generado en paso 5 (no generar uno nuevo)
+    local admin_pass enc_key
+    admin_pass="(ver $CREDENTIALS_FILE)"
+    enc_key="(ver $CREDENTIALS_FILE)"
     if [[ -f "$CREDENTIALS_FILE" ]]; then
-        enc_key=$(grep ENCRYPTION_KEY "$CREDENTIALS_FILE" | cut -d= -f2)
+        local stored_pass stored_key
+        stored_pass=$(grep '^SUPERADMIN_PASS=' "$CREDENTIALS_FILE" | cut -d= -f2 || true)
+        stored_key=$(grep '^ENCRYPTION_KEY=' "$CREDENTIALS_FILE" | cut -d= -f2 || true)
+        [[ -n "$stored_pass" ]] && admin_pass="$stored_pass"
+        [[ -n "$stored_key" ]]  && enc_key="$stored_key"
     fi
 
     cat <<SUMMARY
@@ -645,7 +697,9 @@ step8_summary() {
 │  📋 Próximos pasos:                                          │
 │  1. Guarda ENCRYPTION_KEY y password en un gestor seguro    │
 │  2. rm ${CREDENTIALS_FILE}                                   │
-│  3. Si DNS no propagó: certbot --nginx -d ${DOMAIN}          │
+│  3. Si DNS/SSL pendiente: certbot certonly --webroot         │
+│     -w /var/www/certbot -d ${DOMAIN}                        │
+│     --non-interactive --agree-tos -m admin@${DOMAIN}        │
 │  4. Accede y crea tu primer tenant en /admin                 │
 │  5. Conecta WhatsApp desde /dashboard/channels               │
 │                                                              │
@@ -683,8 +737,6 @@ main() {
     touch "$LOG_FILE"
     load_state
 
-    # FIX: condición basada en COMPLETED_STEP (último EXITOSO)
-    # Paso N se ejecuta si COMPLETED_STEP < N
     if [[ $COMPLETED_STEP -lt 1 ]]; then
         step1_verify_system
         COMPLETED_STEP=1; save_state
@@ -706,11 +758,6 @@ main() {
         COMPLETED_STEP=5; save_state
     fi
     if [[ $COMPLETED_STEP -lt 6 ]]; then
-        # Cargar REDIS_PASSWORD del .env para health check
-        if [[ -f "$PROJECT_DIR/.env" ]]; then
-            REDIS_PASSWORD=$(grep '^REDIS_PASSWORD=' "$PROJECT_DIR/.env" | cut -d= -f2)
-            export REDIS_PASSWORD
-        fi
         step6_health
         COMPLETED_STEP=6; save_state
     fi
