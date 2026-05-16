@@ -54,7 +54,8 @@ def send_message(data: MessageData):
     if cl is None:
         raise HTTPException(status_code=404, detail="Client not logged in")
     try:
-        result = cl.direct_answer(data.thread_id, data.text)
+        # FIX: direct_answer no existe en instagrapi; usar direct_send
+        result = cl.direct_send(data.text, thread_ids=[data.thread_id])
         return {"status": "success", "message_id": result.id}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -67,7 +68,10 @@ def get_directs(username: str):
         raise HTTPException(status_code=404, detail="Client not logged in")
     try:
         threads = cl.direct_threads()
-        return {"status": "success", "threads": [t.dict() for t in threads]}
+        # FIX: compatibilidad Pydantic v1/v2
+        return {"status": "success", "threads": [
+            (t.model_dump() if hasattr(t, 'model_dump') else t.dict()) for t in threads
+        ]}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 

@@ -35,12 +35,10 @@ REDIS_CONTAINER=$(docker compose -f "$COMPOSE_FILE" ps -q redis)
 if [[ -n "$REDIS_CONTAINER" ]]; then
     # FIX M-13: Usar LASTSAVE para confirmar que BGSAVE terminó
     docker exec "$REDIS_CONTAINER" redis-cli BGSAVE
-    local lastsave_before
     lastsave_before=$(docker exec "$REDIS_CONTAINER" redis-cli LASTSAVE)
-    local retries=30
+    retries=30
     while [[ $retries -gt 0 ]]; do
         sleep 1
-        local lastsave_after
         lastsave_after=$(docker exec "$REDIS_CONTAINER" redis-cli LASTSAVE)
         if [[ "$lastsave_after" != "$lastsave_before" ]]; then
             break
@@ -89,9 +87,8 @@ if [[ -f "$PROJECT_DIR/.env" ]]; then
     if [[ -f "$BACKUP_DIR/env_${DATE}.enc" ]]; then
         log "✅ .env cifrado: env_${DATE}.enc"
         log "🔐 Passphrase del .env (GUÁRDALA): $PASSPHRASE"
-        # Guardar passphrase en un archivo separado con permisos restrictivos
-        echo "$PASSPHRASE" > "$BACKUP_DIR/env_${DATE}.passphrase"
-        chmod 600 "$BACKUP_DIR/env_${DATE}.passphrase"
+        # NOTA: No guardamos la passphrase en disco junto al backup cifrado
+        # El administrador debe anotarla de los logs de inmediato
     fi
 fi
 

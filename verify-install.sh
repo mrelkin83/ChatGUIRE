@@ -76,7 +76,6 @@ if [[ -n "$DOMAIN" ]]; then
     curl -fsSL -I "https://${DOMAIN}" 2>/dev/null | grep -qi "strict-transport-security" && test_pass "HSTS header presente" || test_fail "HSTS header ausente"
 
     # CSP sin unsafe-inline
-    local csp
     csp=$(curl -fsSL -I "https://${DOMAIN}" 2>/dev/null | grep -i "content-security-policy" || true)
     if [[ -n "$csp" ]]; then
         ! echo "$csp" | grep -qi "unsafe-inline" && test_pass "CSP sin unsafe-inline" || test_fail "CSP contiene unsafe-inline"

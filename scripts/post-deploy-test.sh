@@ -6,7 +6,7 @@
 set -euo pipefail
 
 PROJECT_DIR="/opt/chatguire"
-COMPOSE_FILE="$PROJECT_DIR/docker-compose.yml"
+COMPOSE_FILE="$PROJECT_DIR/docker-compose.prod.yml"
 ROLLBACK_DIR="$PROJECT_DIR/.rollback"
 LOG_FILE="/var/log/chatguire/deploy.log"
 

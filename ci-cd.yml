@@ -106,7 +106,7 @@ jobs:
         uses: docker/build-push-action@471d1dc4e07e5dbbedf4f0343f588109c6b80ac4 # v6.15.0
         with:
           context: .
-          file: ./Dockerfile
+          file: ./docker/Dockerfile.api
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -117,7 +117,7 @@ jobs:
         uses: docker/build-push-action@471d1dc4e07e5dbbedf4f0343f588109c6b80ac4 # v6.15.0
         with:
           context: .
-          file: ./Dockerfile.web
+          file: ./docker/Dockerfile.web
           push: true
           tags: ${{ env.REGISTRY }}/${{ github.repository }}/${{ env.IMAGE_NAME }}-web:${{ github.sha }}
           labels: ${{ steps.meta.outputs.labels }}

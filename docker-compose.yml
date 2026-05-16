@@ -6,9 +6,9 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_DB: ${DB_NAME:-saas_omnichannel}
-      POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASS:-postgres}
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -44,7 +44,7 @@ services:
     env_file:
       - .env
     environment:
-      - DATABASE_URL=postgresql://${DB_USER:-postgres}:${DB_PASS:-postgres}@postgres:5432/${DB_NAME:-saas_omnichannel}
+      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASS}@postgres:5432/${DB_NAME}
       - EVOLUTION_API_URL=http://evolution-api:8080
       - WAHA_API_URL=http://waha:3000
       - INSTAGRAM_BRIDGE_URL=http://instagram-bridge:8000
@@ -89,7 +89,7 @@ services:
       - chatguire-net
 
   evolution-api:
-    image: atendai/evolution-api:latest
+    image: atendai/evolution-api:v2.1.1
     container_name: chatguire-evolution
     restart: unless-stopped
     ports:
@@ -122,7 +122,7 @@ services:
       - chatguire-net
 
   waha:
-    image: devlikeapro/waha:latest
+    image: devlikeapro/waha:2025.1.15
     container_name: chatguire-waha
     restart: unless-stopped
     ports:
@@ -164,7 +164,7 @@ services:
       - .env
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=postgresql://${DB_USER:-postgres}:${DB_PASS:-postgres}@postgres:5432/${DB_NAME:-saas_omnichannel}
+      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASS}@postgres:5432/${DB_NAME}
     depends_on:
       postgres:
         condition: service_healthy

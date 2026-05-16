@@ -59,8 +59,8 @@ check "Docker daemon responde" "docker info > /dev/null" || ((FAILED++))
 # ─── Contenedores ───────────────────────────────────────────────────────────
 echo ""
 echo "🐳 Contenedores:"
-check_docker "API" "api" "wget -qO- http://127.0.0.1:3000/health > /dev/null" || ((FAILED++))
-check_docker "Web" "web" "wget -qO- http://127.0.0.1:3001 > /dev/null" || ((FAILED++))
+check_docker "API" "api" "wget -qO- http://127.0.0.1:3001/health > /dev/null" || ((FAILED++))
+check_docker "Web" "web" "wget -qO- http://127.0.0.1:3000 > /dev/null" || ((FAILED++))
 check_docker "PostgreSQL" "postgres" "pg_isready -U chatguire" || ((FAILED++))
 check_docker "Redis" "redis" "redis-cli ping | grep -q PONG" || ((FAILED++))
 check_docker "WAHA" "waha" "wget -qO- http://127.0.0.1:3000/health > /dev/null" || ((FAILED++))

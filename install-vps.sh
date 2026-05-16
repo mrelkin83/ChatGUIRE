@@ -153,8 +153,8 @@ step2_dependencies() {
     export DEBIAN_FRONTEND=noninteractive
     apt-get update -qq
     apt-get install -y -qq \
-        curl wget git nginx certbot python3-certbot-nginx \
-        ufw fail2ban openssl jq bc dnsutils \
+        curl wget git nginx certbot \
+        ufw fail2ban openssl jq bc dnsutils psmisc \
         ca-certificates gnupg lsb-release
 
     # ── Docker Engine (repo oficial — docker-compose-plugin no está en Ubuntu repos)
@@ -207,13 +207,14 @@ $(. /etc/os-release && echo "$VERSION_CODENAME") stable" \
     fi
     log "✅ Docker Compose $(docker compose version --short)"
 
-    # UFW
-    ufw --force reset
-    ufw default deny incoming
-    ufw default allow outgoing
-    ufw allow 22/tcp comment 'SSH'
-    ufw allow 80/tcp comment 'HTTP'
-    ufw allow 443/tcp comment 'HTTPS'
+    # UFW — solo añadir reglas si no están ya presentes (evita destruir configuración existente)
+    if ! ufw status | grep -q "Status: active"; then
+        ufw default deny incoming
+        ufw default allow outgoing
+    fi
+    ufw allow 22/tcp comment 'SSH' >/dev/null 2>&1 || true
+    ufw allow 80/tcp comment 'HTTP' >/dev/null 2>&1 || true
+    ufw allow 443/tcp comment 'HTTPS' >/dev/null 2>&1 || true
     ufw --force enable
     log "✅ UFW activo (22, 80, 443)"
 
@@ -342,7 +343,11 @@ NGINX_HTTP
 
     # Activar config HTTP temporal para obtener cert
     ln -sf "/etc/nginx/sites-available/chatguire-http" /etc/nginx/sites-enabled/chatguire-http
-    nginx -t 2>/dev/null && systemctl reload nginx || true
+    if nginx -t >/dev/null 2>&1; then
+        systemctl reload nginx
+    else
+        log "⚠️  Configuración Nginx temporal con errores (esperando certificado)"
+    fi
 
     # Certbot (no-interactivo, no falla si DNS no está listo)
     if ! certbot certificates 2>/dev/null | grep -q "$DOMAIN"; then
@@ -351,7 +356,7 @@ NGINX_HTTP
             log "✅ Certificado SSL obtenido"
             # Activar config HTTPS completa
             rm -f /etc/nginx/sites-enabled/chatguire-http
-            nginx -t && systemctl reload nginx
+            nginx -t >/dev/null 2>&1 && systemctl reload nginx || log "⚠️  Nginx reload falló tras obtener certificado"
         } || {
             log "⚠️  Let's Encrypt no obtuvo cert (DNS posiblemente no propagó)"
             log "   Re-ejecuta cuando el DNS esté listo: certbot --nginx -d $DOMAIN"
@@ -359,7 +364,7 @@ NGINX_HTTP
     else
         log "✅ Certificado SSL ya existe"
         rm -f /etc/nginx/sites-enabled/chatguire-http
-        nginx -t && systemctl reload nginx
+        nginx -t >/dev/null 2>&1 && systemctl reload nginx || log "⚠️  Nginx reload falló"
     fi
 
     # Auto-renew
@@ -423,6 +428,15 @@ WOMPI_PRIVATE_KEY=
 WOMPI_ENVIRONMENT=sandbox
 WOMPI_INTEGRITY_SECRET=
 
+# Servicios externos
+EVOLUTION_API_URL=http://evolution-api:8080
+EVOLUTION_API_GLOBAL_KEY=${jwt_secret}
+WAHA_API_URL=http://waha:3000
+WAHA_ENGINE=WEBJS
+INSTAGRAM_BRIDGE_URL=http://instagram-bridge:8000
+INSTAGRAM_BRIDGE_PORT=8000
+BRIDGE_SECRET=${webhook_secret}
+
 # URLs
 NEXT_PUBLIC_API_URL=https://${DOMAIN}/api
 API_BASE_URL=https://${DOMAIN}
@@ -477,19 +491,55 @@ step5_build() {
     done
     log "✅ PostgreSQL listo"
 
+    # FIX: Esperar a que el contenedor api esté corriendo antes de ejecutar migraciones
+    log "⏳ Esperando contenedor API..."
+    retries=30
+    until docker compose -f "$COMPOSE_FILE" ps -q api >/dev/null 2>&1 && \
+          [[ $(docker compose -f "$COMPOSE_FILE" ps -a api --format '{{.State}}') == "running" ]]; do
+        sleep 3
+        retries=$((retries - 1))
+        [[ $retries -eq 0 ]] && error_exit "API container no arrancó en 90s"
+    done
+    log "✅ API container corriendo"
+
     # FIX: usar Drizzle (no Prisma)
     log "Ejecutando migraciones Drizzle..."
-    docker compose -f "$COMPOSE_FILE" exec -T api \
-        node -e "
-          const { migrate } = require('drizzle-orm/postgres-js/migrator');
-          const { db } = require('./dist/db');
-          const path = require('path');
-          migrate(db, { migrationsFolder: path.join(__dirname, 'migrations') })
-            .then(() => { console.log('Migrations OK'); process.exit(0); })
-            .catch(e => { console.error('Migration error:', e.message); process.exit(1); });
-        " 2>/dev/null || {
-        log "⚠️  Migración automática falló. Ejecuta manualmente:"
-        log "   docker compose -f $COMPOSE_FILE exec api node -e \"require('./dist/db').migrate()\""
+    docker compose -f "$COMPOSE_FILE" exec -T api sh -c '
+      cd /app && npx drizzle-kit migrate --config=node_modules/@saas/db/drizzle.config.ts
+    ' 2>/dev/null || {
+        log "⚠️  Migración automática falló. Ejecuta manualmente desde el host:"
+        log "   docker run --rm -v $PROJECT_DIR:/repo -w /repo -e DATABASE_URL=\$DATABASE_URL node:22-alpine sh -c \"corepack enable && pnpm install && pnpm --filter @saas/db db:migrate\""
+    }
+
+    # FIX: Crear SuperAdmin si no existe
+    log "Creando SuperAdmin..."
+    local admin_pass=""
+    if [[ -f "$CREDENTIALS_FILE" ]]; then
+        admin_pass=$(grep SUPERADMIN_PASS "$CREDENTIALS_FILE" | cut -d= -f2 || true)
+    fi
+    if [[ -z "$admin_pass" ]]; then
+        admin_pass=$(openssl rand -base64 18 | tr -d '=+/')
+    fi
+    docker compose -f "$COMPOSE_FILE" exec -T api node -e "
+      (async () => {
+        try {
+          const bcrypt = require('bcrypt');
+          const postgres = require('postgres');
+          const sql = postgres(process.env.DATABASE_URL);
+          const hash = await bcrypt.hash('${admin_pass}', 12);
+          await sql\`INSERT INTO superadmin_users (email, password_hash, full_name, role) VALUES ('admin@${DOMAIN}', \${hash}, 'Super Admin', 'superadmin') ON CONFLICT (email) DO NOTHING\`;
+          await sql.end();
+          console.log('SUPERADMIN_PASS=${admin_pass}');
+        } catch (e) {
+          console.error('Error creando superadmin:', e.message);
+          process.exit(1);
+        }
+      })();
+    " > /tmp/.superadmin_out 2>/dev/null && {
+        grep SUPERADMIN_PASS /tmp/.superadmin_out >> "$CREDENTIALS_FILE" && chmod 600 "$CREDENTIALS_FILE"
+        log "✅ SuperAdmin creado (admin@${DOMAIN})"
+    } || {
+        log "⚠️  No se pudo crear SuperAdmin automáticamente. Crea uno manualmente desde /superadmin."
     }
 
     log "✅ Aplicación desplegada"
@@ -536,11 +586,14 @@ step7_backups() {
     # Crear directorio de scripts si no existe
     mkdir -p "$PROJECT_DIR/scripts"
 
-    # FIX: copiar backup.sh a scripts/ si existe en la raíz
-    if [[ -f "$PROJECT_DIR/backup.sh" ]] && [[ ! -f "$PROJECT_DIR/scripts/backup.sh" ]]; then
-        cp "$PROJECT_DIR/backup.sh" "$PROJECT_DIR/scripts/backup.sh"
-        chmod +x "$PROJECT_DIR/scripts/backup.sh"
-    fi
+    # FIX: copiar todos los scripts esenciales a scripts/
+    for script in backup.sh restore.sh update.sh health-check.sh verify-install.sh; do
+        if [[ -f "$PROJECT_DIR/$script" ]] && [[ ! -f "$PROJECT_DIR/scripts/$script" ]]; then
+            cp "$PROJECT_DIR/$script" "$PROJECT_DIR/scripts/$script"
+            chmod +x "$PROJECT_DIR/scripts/$script"
+            log "✅ Copiado $script a scripts/"
+        fi
+    done
 
     cat > /etc/cron.d/chatguire-backup <<EOF
 0 2 * * * root cd ${PROJECT_DIR} && bash scripts/backup.sh >> /var/log/chatguire-backup.log 2>&1

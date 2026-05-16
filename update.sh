@@ -25,11 +25,11 @@ WEB_IMAGE=$(docker compose -f "$COMPOSE_FILE" images -q web | head -1)
 
 if [[ -n "$API_IMAGE" ]]; then
     API_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "$API_IMAGE" 2>/dev/null || echo "")
-    echo "$API_DIGEST" > "$ROLLBACK_DIR/api_digest.txt"
+    [[ -n "$API_DIGEST" ]] && echo "$API_DIGEST" > "$ROLLBACK_DIR/api_digest.txt"
 fi
 if [[ -n "$WEB_IMAGE" ]]; then
     WEB_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "$WEB_IMAGE" 2>/dev/null || echo "")
-    echo "$WEB_DIGEST" > "$ROLLBACK_DIR/web_digest.txt"
+    [[ -n "$WEB_DIGEST" ]] && echo "$WEB_DIGEST" > "$ROLLBACK_DIR/web_digest.txt"
 fi
 
 # Guardar git commit actual
@@ -61,8 +61,8 @@ docker compose -f "$COMPOSE_FILE" up -d
 # FIX M-12: Retry loop para health check en vez de sleep fijo
 log "⏳ Verificando salud de la aplicación..."
 DOMAIN=$(grep DOMAIN "$PROJECT_DIR/.env" | cut -d= -f2 | tr -d '"')
-local retries=30
-local healthy=false
+retries=30
+healthy=false
 
 while [[ $retries -gt 0 ]]; do
     if curl -fsSL "https://${DOMAIN}/health" > /dev/null 2>&1; then

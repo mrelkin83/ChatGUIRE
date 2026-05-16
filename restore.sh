@@ -64,13 +64,12 @@ if [[ -z "$DB_CONTAINER" ]]; then
     exit 1
 fi
 
-docker exec -i "$DB_CONTAINER" pg_restore \
+gunzip -c "$DB_BACKUP" | docker exec -i "$DB_CONTAINER" pg_restore \
     --clean --if-exists \
-    --dbname="postgresql://${DB_USER}:${DB_PASS}@localhost:5432/${DB_NAME}" \
-    < <(gunzip -c "$DB_BACKUP")
+    --dbname="postgresql://${DB_USER}:${DB_PASS}@localhost:5432/${DB_NAME}"
 
 echo "🚀 Reiniciando servicios..."
-docker compose -f "$COMPOSE_FILE" start api web
+docker compose -f "$COMPOSE_FILE" up -d
 
 echo "⏳ Esperando health check..."
 sleep 10
