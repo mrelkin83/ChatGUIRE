@@ -2,8 +2,8 @@
 
 > **Plataforma todo-en-uno** para gestionar conversaciones de clientes vía WhatsApp, Instagram, Facebook Messenger y TikTok, potenciada por inteligencia artificial. Diseñada para negocios que quieren automatizar atención, ventas y citas sin perder el toque humano.
 
-[![Build](https://img.shields.io/badge/build-passing-22c55e)](https://github.com/mrelkin83/ChatG-IRE)
-[![Tests](https://img.shields.io/badge/tests-19%2F19-22c55e)](https://github.com/mrelkin83/ChatG-IRE)
+[![Build](https://img.shields.io/badge/build-passing-22c55e)](https://github.com/mrelkin83/ChatGUIRE)
+[![Tests](https://img.shields.io/badge/tests-19%2F19-22c55e)](https://github.com/mrelkin83/ChatGUIRE)
 [![Next.js](https://img.shields.io/badge/Next.js-14.1.0-black)](https://nextjs.org)
 [![Fastify](https://img.shields.io/badge/Fastify-4.26.2-000000)](https://fastify.dev)
 [![Drizzle](https://img.shields.io/badge/Drizzle-ORM-C5F74F)](https://orm.drizzle.team)
@@ -64,7 +64,7 @@
 ## 📁 Estructura del Proyecto
 
 ```
-ChatG-IRE/
+ChatGUIRE/
 ├── apps/
 │   ├── api/                    # Backend Fastify
 │   │   ├── src/
@@ -122,8 +122,8 @@ ChatG-IRE/
 ### 1. Clonar e instalar
 
 ```bash
-git clone https://github.com/mrelkin83/ChatG-IRE.git
-cd ChatG-IRE
+git clone https://github.com/mrelkin83/ChatGUIRE.git
+cd ChatGUIRE
 pnpm install
 ```
 
@@ -330,7 +330,7 @@ Usa el script `install-vps.sh` incluido en el repo. **Un solo comando** instala 
 
 ```bash
 # 1. Clonar el repositorio
-git clone https://github.com/mrelkin83/ChatG-IRE.git /opt/chatguire
+git clone https://github.com/mrelkin83/ChatGUIRE.git /opt/chatguire
 cd /opt/chatguire
 
 # 2. Ejecutar el instalador como root
@@ -462,7 +462,7 @@ MIT © 2025 — ChatGÜIRE
 
 ## 🙋 Soporte
 
-¿Preguntas o problemas? Abre un [issue](https://github.com/mrelkin83/ChatG-IRE/issues) en GitHub.
+¿Preguntas o problemas? Abre un [issue](https://github.com/mrelkin83/ChatGUIRE/issues) en GitHub.
 
 **Hecho con 💛 en Colombia**
 # ChatGUIRE
