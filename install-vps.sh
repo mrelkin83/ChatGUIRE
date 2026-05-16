@@ -148,17 +148,42 @@ step1_verify_system() {
 step2_dependencies() {
     show_step 2 "Instalando dependencias..."
 
-    # FIX: esperar lock antes de apt
     wait_for_dpkg_lock
 
     export DEBIAN_FRONTEND=noninteractive
     apt-get update -qq
     apt-get install -y -qq \
         curl wget git nginx certbot python3-certbot-nginx \
-        ufw fail2ban docker.io docker-compose-plugin \
-        openssl jq bc dnsutils
+        ufw fail2ban openssl jq bc dnsutils \
+        ca-certificates gnupg lsb-release
 
-    # Docker
+    # ── Docker Engine (repo oficial — docker-compose-plugin no está en Ubuntu repos)
+    if ! command -v docker &>/dev/null; then
+        log "Instalando Docker desde repositorio oficial..."
+        install -m 0755 -d /etc/apt/keyrings
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg \
+            | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+        chmod a+r /etc/apt/keyrings/docker.gpg
+
+        echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
+https://download.docker.com/linux/ubuntu \
+$(. /etc/os-release && echo "$VERSION_CODENAME") stable" \
+            | tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+        wait_for_dpkg_lock
+        apt-get update -qq
+        apt-get install -y -qq \
+            docker-ce docker-ce-cli containerd.io \
+            docker-buildx-plugin docker-compose-plugin
+    else
+        log "Docker ya instalado — verificando compose plugin..."
+        # Instalar compose-plugin si falta
+        if ! docker compose version &>/dev/null 2>&1; then
+            apt-get install -y -qq docker-compose-plugin 2>/dev/null || \
+            apt-get install -y -qq docker-compose 2>/dev/null || true
+        fi
+    fi
+
     systemctl enable docker
     systemctl start docker
     local retries=10
@@ -168,6 +193,19 @@ step2_dependencies() {
         [[ $retries -eq 0 ]] && error_exit "Docker no responde después de iniciar."
     done
     log "✅ Docker v$(docker version --format '{{.Server.Version}}')"
+
+    # Verificar que 'docker compose' funciona (V2 plugin)
+    if ! docker compose version &>/dev/null 2>&1; then
+        # Fallback: instalar docker-compose V1 clásico
+        curl -fsSL "https://github.com/docker/compose/releases/download/v2.24.5/docker-compose-linux-$(uname -m)" \
+            -o /usr/local/bin/docker-compose
+        chmod +x /usr/local/bin/docker-compose
+        # Crear alias para que 'docker compose' funcione
+        mkdir -p /usr/local/lib/docker/cli-plugins
+        ln -sf /usr/local/bin/docker-compose /usr/local/lib/docker/cli-plugins/docker-compose
+        log "✅ Docker Compose V2 instalado manualmente"
+    fi
+    log "✅ Docker Compose $(docker compose version --short)"
 
     # UFW
     ufw --force reset
