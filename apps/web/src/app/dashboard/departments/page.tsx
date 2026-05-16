@@ -45,7 +45,7 @@ interface User {
   agentStatus: string;
 }
 
-import { API_BASE } from "@/lib/api";
+import { API_BASE, dfetch, getTenantId } from "@/lib/api";
 const API = `${API_BASE}/api`;
 
 const memberRoleColors: Record<string, string> = {
@@ -78,30 +78,27 @@ export default function DepartmentsPage() {
   const [newDept, setNewDept] = useState({ name: "", description: "", color: "#6366F1" });
 
   useEffect(() => {
-    fetch(`${API}/tenants`)
-      .then((r) => r.json())
-      .then((tenants) => {
-        if (Array.isArray(tenants) && tenants.length > 0) {
-          const id = tenants[0].id;
-          setTenantId(id);
-          return Promise.all([
-            fetch(`${API}/departments/${id}`).then((r) => r.json()),
-            fetch(`${API}/users?tenantId=${id}`).then((r) => r.json()),
-          ]);
-        }
-        throw new Error("No tenants");
-      })
-      .then(([deptsData, usersData]) => {
-        setDepartments(Array.isArray(deptsData) ? deptsData : []);
-        setUsers(Array.isArray(usersData) ? usersData : []);
-      })
-      .catch(() => toast.error("Error al cargar datos"))
-      .finally(() => setLoading(false));
+    const id = getTenantId();
+    if (id) {
+      setTenantId(id);
+      Promise.all([
+        dfetch(`${API}/departments/${id}`).then((r) => r.json()),
+        dfetch(`${API}/users/${id}`).then((r) => r.json()),
+      ])
+        .then(([deptsData, usersData]) => {
+          setDepartments(Array.isArray(deptsData) ? deptsData : []);
+          setUsers(Array.isArray(usersData) ? usersData : []);
+        })
+        .catch(() => toast.error("Error al cargar datos"))
+        .finally(() => setLoading(false));
+    } else {
+      setLoading(false);
+    }
   }, []);
 
   const loadDepartments = async () => {
     try {
-      const res = await fetch(`${API}/departments/${tenantId}`);
+      const res = await dfetch(`${API}/departments/${tenantId}`);
       const data = await res.json();
       if (Array.isArray(data)) setDepartments(data);
     } catch {}
@@ -114,7 +111,7 @@ export default function DepartmentsPage() {
     }
     setSaving(true);
     try {
-      const res = await fetch(`${API}/departments`, {
+      const res = await dfetch(`${API}/departments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -137,7 +134,7 @@ export default function DepartmentsPage() {
 
   const handleDeleteDepartment = async (deptId: string) => {
     try {
-      const res = await fetch(`${API}/departments/${deptId}`, { method: "DELETE" });
+      const res = await dfetch(`${API}/departments/${deptId}`, { method: "DELETE" });
       if (!res.ok) throw new Error();
       setDepartments(departments.filter((d) => d.id !== deptId));
       setShowManageModal(false);
@@ -151,7 +148,7 @@ export default function DepartmentsPage() {
 
   const handleAddMember = async (deptId: string, userId: string) => {
     try {
-      const res = await fetch(`${API}/departments/${deptId}/members`, {
+      const res = await dfetch(`${API}/departments/${deptId}/members`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId, role: "agent" }),
@@ -166,7 +163,7 @@ export default function DepartmentsPage() {
 
   const handleRemoveMember = async (deptId: string, userId: string) => {
     try {
-      const res = await fetch(`${API}/departments/${deptId}/members/${userId}`, {
+      const res = await dfetch(`${API}/departments/${deptId}/members/${userId}`, {
         method: "DELETE",
       });
       if (!res.ok) throw new Error();

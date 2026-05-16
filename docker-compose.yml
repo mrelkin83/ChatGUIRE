@@ -47,6 +47,7 @@ services:
       - DATABASE_URL=postgresql://${DB_USER:-postgres}:${DB_PASS:-postgres}@postgres:5432/${DB_NAME:-saas_omnichannel}
       - EVOLUTION_API_URL=http://evolution-api:8080
       - WAHA_API_URL=http://waha:3000
+      - INSTAGRAM_BRIDGE_URL=http://instagram-bridge:8000
     ports:
       - "${API_PORT:-3001}:3001"
     depends_on:
@@ -130,6 +131,53 @@ services:
       - WHATSAPP_DEFAULT_ENGINE=${WAHA_ENGINE:-WEBJS}
       - WAHA_WEBHOOK_URL=${API_BASE_URL:-http://localhost:3001}/api/webhooks/waha
       - WAHA_WEBHOOK_EVENTS=message
+    networks:
+      - chatguire-net
+
+  instagram-bridge:
+    build:
+      context: ./apps/instagram-bridge
+      dockerfile: Dockerfile
+    container_name: chatguire-instagram-bridge
+    restart: unless-stopped
+    environment:
+      - BRIDGE_SECRET=${BRIDGE_SECRET}
+    ports:
+      - "${INSTAGRAM_BRIDGE_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks:
+      - chatguire-net
+
+  # ─── Campaign Worker ───────────────────────────────────────────────────────
+  campaign-worker:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.campaign-worker
+    container_name: chatguire-campaign-worker
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://${DB_USER:-postgres}:${DB_PASS:-postgres}@postgres:5432/${DB_NAME:-saas_omnichannel}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    mem_limit: 256m
+    memswap_limit: 256m
+    cpus: '0.5'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
     networks:
       - chatguire-net
 

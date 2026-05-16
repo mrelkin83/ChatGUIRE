@@ -38,7 +38,7 @@ interface Order {
   itemsCount?: number;
 }
 
-import { API_BASE } from "@/lib/api";
+import { API_BASE, dfetch, getTenantId } from "@/lib/api";
 const API = `${API_BASE}/api`;
 
 const statusConfig: Record<string, { label: string; variant: "amber" | "blue" | "purple" | "green" | "red" | "gray" }> = {
@@ -62,28 +62,23 @@ export default function OrdersPage() {
   const [changingStatus, setChangingStatus] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(`${API}/tenants`)
-      .then((r) => r.json())
-      .then((tenants) => {
-        if (Array.isArray(tenants) && tenants.length > 0) {
-          const id = tenants[0].id;
-          setTenantId(id);
-          return fetch(`${API}/orders?tenantId=${id}`).then((r) => r.json());
-        }
-        throw new Error("No tenants");
-      })
-      .then((data) => setOrders(Array.isArray(data) ? data : []))
-      .catch(() => {
-        setOrders([]);
-        toast.error("Error al cargar pedidos");
-      })
-      .finally(() => setLoading(false));
+    const id = getTenantId();
+    if (id) {
+      setTenantId(id);
+      dfetch(`${API}/orders/${id}`)
+        .then((r) => r.json())
+        .then((data) => setOrders(Array.isArray(data) ? data : []))
+        .catch(() => { setOrders([]); toast.error("Error al cargar pedidos"); })
+        .finally(() => setLoading(false));
+    } else {
+      setLoading(false);
+    }
   }, []);
 
   const handleStatusChange = async (order: Order, newStatus: string) => {
     setChangingStatus(order.id);
     try {
-      const res = await fetch(`${API}/orders/${tenantId}/${order.id}`, {
+      const res = await dfetch(`${API}/orders/${tenantId}/${order.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),

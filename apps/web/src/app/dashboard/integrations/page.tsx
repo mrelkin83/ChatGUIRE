@@ -33,7 +33,7 @@ interface Integration {
   isPrimary: boolean;
 }
 
-import { API_BASE } from "@/lib/api";
+import { API_BASE, dfetch, getTenantId } from "@/lib/api";
 const API = `${API_BASE}/api`;
 
 const categoryConfig: Record<string, { label: string; icon: any; desc: string }> = {
@@ -56,25 +56,22 @@ export default function IntegrationsPage() {
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    fetch(`${API}/tenants`)
-      .then((r) => r.json())
-      .then((tenants) => {
-        if (Array.isArray(tenants) && tenants.length > 0) {
-          const id = tenants[0].id;
-          setTenantId(id);
-          return Promise.all([
-            fetch(`${API}/integrations/specs`).then((r) => r.json()),
-            fetch(`${API}/integrations/${id}`).then((r) => r.json()),
-          ]);
-        }
-        throw new Error("No tenants");
-      })
-      .then(([specsData, intData]) => {
-        setSpecs(specsData || {});
-        setIntegrations(Array.isArray(intData) ? intData : []);
-      })
-      .catch(() => toast.error("Error al cargar integraciones"))
-      .finally(() => setLoading(false));
+    const id = getTenantId();
+    if (id) {
+      setTenantId(id);
+      Promise.all([
+        dfetch(`${API}/integrations/specs`).then((r) => r.json()),
+        dfetch(`${API}/integrations/${id}`).then((r) => r.json()),
+      ])
+        .then(([specsData, intData]) => {
+          setSpecs(specsData || {});
+          setIntegrations(Array.isArray(intData) ? intData : []);
+        })
+        .catch(() => toast.error("Error al cargar integraciones"))
+        .finally(() => setLoading(false));
+    } else {
+      setLoading(false);
+    }
   }, []);
 
   const getIntegration = (provider: string) =>
@@ -93,7 +90,7 @@ export default function IntegrationsPage() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const res = await fetch(`${API}/integrations/${tenantId}`, {
+      const res = await dfetch(`${API}/integrations/${tenantId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -124,7 +121,7 @@ export default function IntegrationsPage() {
 
   const handleDelete = async (provider: string) => {
     try {
-      const res = await fetch(`${API}/integrations/${tenantId}/${provider}`, {
+      const res = await dfetch(`${API}/integrations/${tenantId}/${provider}`, {
         method: "DELETE",
       });
       if (!res.ok) throw new Error();

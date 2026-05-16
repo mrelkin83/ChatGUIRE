@@ -1,16 +1,31 @@
 import axios, { AxiosInstance } from 'axios';
 import { logger } from './logger';
 
+const WOMPI_SANDBOX_URL = 'https://sandbox.wompi.co/v1';
+const WOMPI_PROD_URL = 'https://production.wompi.co/v1';
+
+export type WompiMode = 'sandbox' | 'production';
+
 export class WompiClient {
   private axios: AxiosInstance;
 
-  constructor() {
+  constructor(mode: WompiMode = 'sandbox', privateKey?: string) {
+    const baseURL = mode === 'production' ? WOMPI_PROD_URL : WOMPI_SANDBOX_URL;
+    const key = privateKey ?? (mode === 'production'
+      ? process.env.WOMPI_PROD_PRIVATE_KEY
+      : process.env.WOMPI_SANDBOX_PRIVATE_KEY) ?? '';
+
     this.axios = axios.create({
-      baseURL: 'https://sandbox.wompi.co/v1', // use sandbox for dev
+      baseURL,
       headers: {
-        Authorization: `Bearer ${process.env.WOMPI_SANDBOX_PRIVATE_KEY}`,
+        Authorization: `Bearer ${key}`,
       },
     });
+  }
+
+  static forTenant(tenantConfig: { wompiMode?: string; wompiPrivateKey?: string }): WompiClient {
+    const mode: WompiMode = tenantConfig.wompiMode === 'production' ? 'production' : 'sandbox';
+    return new WompiClient(mode, tenantConfig.wompiPrivateKey);
   }
 
   async createPaymentLink(params: {

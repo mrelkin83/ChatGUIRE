@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { API_BASE } from "@/lib/api";
-import { 
-  Send, Users, Plus, MoreHorizontal, Play, Pause, Trash2, 
+import { API_BASE, dfetch, getTenantId } from "@/lib/api";
+import {
+  Send, Users, Plus, MoreHorizontal, Play, Pause, Trash2,
   Calendar, MessageSquare, BarChart3, X, Loader2, Upload,
-  CheckCircle2, XCircle, Clock, AlertCircle
+  CheckCircle2, XCircle, Clock, AlertCircle, Sliders
 } from "lucide-react";
+import { CampaignDashboard } from "@/components/campaigns/CampaignDashboard";
 
 interface ContactList {
   id: string;
@@ -37,7 +38,7 @@ export default function CampaignsPage() {
   const [contactLists, setContactLists] = useState<ContactList[]>([]);
   const [loading, setLoading] = useState(true);
   const [tenantId, setTenantId] = useState("");
-  const [activeTab, setActiveTab] = useState<"campaigns" | "lists">("campaigns");
+  const [activeTab, setActiveTab] = useState<"campaigns" | "lists" | "segmented">("campaigns");
   const [showCreateCampaign, setShowCreateCampaign] = useState(false);
   const [showCreateList, setShowCreateList] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -60,32 +61,29 @@ export default function CampaignsPage() {
   const [listDesc, setListDesc] = useState("");
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/tenants`)
-      .then((r) => r.json())
-      .then((tenants) => {
-        if (tenants.length > 0) {
-          const id = tenants[0].id;
-          setTenantId(id);
-          return Promise.all([
-            fetch(`${API_BASE}/api/campaigns/${id}`).then((r) => r.json()),
-            fetch(`${API_BASE}/api/contact-lists/${id}`).then((r) => r.json()),
-          ]);
-        }
-        throw new Error("No tenants");
-      })
-      .then(([campsData, listsData]) => {
-        setCampaigns(Array.isArray(campsData) ? campsData : []);
-        setContactLists(Array.isArray(listsData) ? listsData : []);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    const id = getTenantId();
+    if (id) {
+      setTenantId(id);
+      Promise.all([
+        dfetch(`${API_BASE}/api/campaigns/${id}`).then((r) => r.json()),
+        dfetch(`${API_BASE}/api/contact-lists/${id}`).then((r) => r.json()),
+      ])
+        .then(([campsData, listsData]) => {
+          setCampaigns(Array.isArray(campsData) ? campsData : []);
+          setContactLists(Array.isArray(listsData) ? listsData : []);
+        })
+        .catch(() => {})
+        .finally(() => setLoading(false));
+    } else {
+      setLoading(false);
+    }
   }, []);
 
   const handleCreateList = async () => {
     if (!listName) return;
     setSaving(true);
     try {
-      const res = await fetch(`${API_BASE}/api/contact-lists`, {
+      const res = await dfetch(`${API_BASE}/api/contact-lists`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tenantId, name: listName, description: listDesc }),
@@ -105,7 +103,7 @@ export default function CampaignsPage() {
     if (!campName || !campListId || campMessages.length === 0) return;
     setSaving(true);
     try {
-      const res = await fetch(`${API_BASE}/api/campaigns`, {
+      const res = await dfetch(`${API_BASE}/api/campaigns`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -130,9 +128,8 @@ export default function CampaignsPage() {
 
   const handleSendCampaign = async (id: string) => {
     try {
-      await fetch(`${API_BASE}/api/campaigns/${id}/send`, { method: "POST" });
-      // Refresh campaigns
-      const res = await fetch(`${API_BASE}/api/campaigns/${tenantId}`);
+      await dfetch(`${API_BASE}/api/campaigns/${id}/send`, { method: "POST" });
+      const res = await dfetch(`${API_BASE}/api/campaigns/${tenantId}`);
       const data = await res.json();
       if (Array.isArray(data)) setCampaigns(data);
     } catch {}
@@ -140,29 +137,28 @@ export default function CampaignsPage() {
 
   const handleDeleteCampaign = async (id: string) => {
     try {
-      await fetch(`${API_BASE}/api/campaigns/${id}`, { method: "DELETE" });
+      await dfetch(`${API_BASE}/api/campaigns/${id}`, { method: "DELETE" });
       setCampaigns(campaigns.filter(c => c.id !== id));
     } catch {}
   };
 
   const handleDeleteList = async (id: string) => {
     try {
-      await fetch(`${API_BASE}/api/contact-lists/${id}`, { method: "DELETE" });
+      await dfetch(`${API_BASE}/api/contact-lists/${id}`, { method: "DELETE" });
       setContactLists(contactLists.filter(l => l.id !== id));
     } catch {}
   };
 
   const handleImportCustomers = async (listId: string) => {
     try {
-      const res = await fetch(`${API_BASE}/api/contact-lists/${listId}/import-customers`, {
+      const res = await dfetch(`${API_BASE}/api/contact-lists/${listId}/import-customers`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tenantId }),
       });
       if (res.ok) {
         const result = await res.json();
-        // Refresh lists
-        const listsRes = await fetch(`${API_BASE}/api/contact-lists/${tenantId}`);
+        const listsRes = await dfetch(`${API_BASE}/api/contact-lists/${tenantId}`);
         const listsData = await listsRes.json();
         if (Array.isArray(listsData)) setContactLists(listsData);
       }
@@ -173,7 +169,7 @@ export default function CampaignsPage() {
     const formData = new FormData();
     formData.append("file", file);
     try {
-      const res = await fetch(`${API_BASE}/api/contact-lists/${listId}/import-excel`, {
+      const res = await dfetch(`${API_BASE}/api/contact-lists/${listId}/import-excel`, {
         method: "POST",
         body: formData,
       });
@@ -181,7 +177,7 @@ export default function CampaignsPage() {
         const result = await res.json();
         setImportResult(result);
         setImportingListId(null);
-        const listsRes = await fetch(`${API_BASE}/api/contact-lists/${tenantId}`);
+        const listsRes = await dfetch(`${API_BASE}/api/contact-lists/${tenantId}`);
         const listsData = await listsRes.json();
         if (Array.isArray(listsData)) setContactLists(listsData);
       }
@@ -279,6 +275,15 @@ export default function CampaignsPage() {
         >
           <Users className="h-4 w-4 inline mr-2" />
           Listas ({contactLists.length})
+        </button>
+        <button
+          onClick={() => setActiveTab("segmented")}
+          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+            activeTab === "segmented" ? "bg-[#252536] text-white" : "text-[#8b8b9e] hover:text-white"
+          }`}
+        >
+          <Sliders className="h-4 w-4 inline mr-2" />
+          Segmentadas
         </button>
       </div>
 
@@ -428,6 +433,11 @@ export default function CampaignsPage() {
           )}
         </div>
         </div>
+      )}
+
+      {/* Segmented Campaigns Tab */}
+      {activeTab === "segmented" && tenantId && (
+        <CampaignDashboard tenantId={tenantId} />
       )}
 
       {/* Create Campaign Modal */}

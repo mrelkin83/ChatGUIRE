@@ -42,14 +42,18 @@ export async function processCrearPedido(params: ActionProcessorInput): Promise<
     return;
   }
 
-  // 2. Create order
-  const total = items.reduce((acc, i) => acc + Number(i.unitPrice) * i.quantity, 0);
+  // 2. Create order with 19% IVA
+  const subtotal = items.reduce((acc, i) => acc + Number(i.unitPrice) * i.quantity, 0);
+  const iva = Math.round(subtotal * 0.19);
+  const total = subtotal + iva;
   const orderNumber = `ORD-${Math.floor(Math.random() * 90000) + 10000}`;
 
   const [order] = await db.insert(orders).values({
     tenantId,
     customerId,
     orderNumber,
+    subtotal: subtotal.toString(),
+    tax: iva.toString(),
     total: total.toString(),
     status: 'pending',
     shippingAddress: accion.direccionEnvio || null,
@@ -75,6 +79,6 @@ export async function processCrearPedido(params: ActionProcessorInput): Promise<
   // 5. Confirm and ask for payment
   await channelManager.sendMessage(tenantId, channel as any, instanceName, customerPhone, {
     type: 'text',
-    text: `✅ *¡Pedido creado con éxito!*\n\n🔢 Orden: #${orderNumber}\n💰 Total: ${formatCOP(total)}\n\n¿Deseas proceder al pago ahora?`,
+    text: `✅ *¡Pedido creado con éxito!*\n\n🔢 Orden: #${orderNumber}\n💵 Subtotal: ${formatCOP(subtotal)}\n🏛️ IVA (19%): ${formatCOP(iva)}\n💰 Total: ${formatCOP(total)}\n\n¿Deseas proceder al pago ahora?`,
   });
 }

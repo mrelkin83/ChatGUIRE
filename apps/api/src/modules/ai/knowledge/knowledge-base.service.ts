@@ -30,5 +30,5 @@ export async function searchKnowledge(tenantId: string, query: string, limit = 3
     .orderBy(sql`${aiKnowledge.embedding} <=> ${embeddingSql}::vector`)
     .limit(limit);
 
-  return results.filter(r => r.similarity > 0.7); // Only return relevant results
+  return results.filter(r => r.similarity >= 0.75);
 }

@@ -1,9 +1,14 @@
 import { ActionProcessorInput } from './crear-cita.processor';
 import { db, appointments } from '@saas/db';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, asc } from 'drizzle-orm';
 import { channelManager } from '../../channels/core/channel-manager';
 import { dateHelpers } from '@saas/shared';
 import { logger } from '../../../lib/logger';
+import dayjs from 'dayjs';
+import timezone from 'dayjs/plugin/timezone';
+import utc from 'dayjs/plugin/utc';
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 export async function processVerCitas(params: ActionProcessorInput): Promise<void> {
   const { tenantId, customerPhone, channel, customerId } = params;
@@ -19,7 +24,7 @@ export async function processVerCitas(params: ActionProcessorInput): Promise<voi
       eq(appointments.customerId, customerId),
       eq(appointments.status, 'scheduled')
     ))
-    .orderBy(desc(appointments.scheduledAt))
+    .orderBy(asc(appointments.scheduledAt))
     .limit(5);
 
   if (upcomingAppointments.length === 0) {
@@ -32,8 +37,9 @@ export async function processVerCitas(params: ActionProcessorInput): Promise<voi
 
   const lines = upcomingAppointments.map((cita, i) => {
     const fecha = dateHelpers.formatDisplayDateNatural(cita.scheduledAt, params.timezone);
+    const local = dayjs(cita.scheduledAt).tz(params.timezone);
     const hora = dateHelpers.formatTimeNatural(
-      `${String(cita.scheduledAt.getHours()).padStart(2, '0')}:${String(cita.scheduledAt.getMinutes()).padStart(2, '0')}:00`
+      `${String(local.hour()).padStart(2, '0')}:${String(local.minute()).padStart(2, '0')}:00`
     );
     return `${i + 1}. ${cita.serviceName}\n   📅 ${fecha} a las ${hora}`;
   });

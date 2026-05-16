@@ -9,6 +9,8 @@ export const orders = pgTable('orders', {
   customerId: uuid('customer_id').notNull().references(() => customers.id),
   orderNumber: varchar('order_number', { length: 50 }).notNull(),
   status: varchar('status', { length: 30 }).notNull().default('pending'),
+  subtotal: decimal('subtotal', { precision: 12, scale: 2 }).notNull().default('0'),
+  tax: decimal('tax', { precision: 12, scale: 2 }).notNull().default('0'),
   total: decimal('total', { precision: 12, scale: 2 }).notNull(),
   shippingAddress: text('shipping_address'),
   notes: text('notes'),

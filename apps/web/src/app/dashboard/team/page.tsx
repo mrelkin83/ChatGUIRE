@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { API_BASE } from "@/lib/api";
+import { API_BASE, dfetch, getTenantId } from "@/lib/api";
 import { 
   UserPlus, Mail, Shield, Crown, UserCheck, UserCircle, 
   Plus, Users, Building2, Trash2, Edit2, X, Loader2,
@@ -58,32 +58,29 @@ export default function TeamPage() {
   const [showAddDeptMember, setShowAddDeptMember] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/tenants`)
-      .then((r) => r.json())
-      .then((tenants) => {
-        if (tenants.length > 0) {
-          const id = tenants[0].id;
-          setTenantId(id);
-          return Promise.all([
-            fetch(`${API_BASE}/api/users/${id}`).then((r) => r.json()),
-            fetch(`${API_BASE}/api/departments/${id}`).then((r) => r.json()),
-          ]);
-        }
-        throw new Error("No tenants");
-      })
-      .then(([usersData, deptsData]) => {
-        setMembers(Array.isArray(usersData) ? usersData : []);
-        setDepartments(Array.isArray(deptsData) ? deptsData : []);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    const id = getTenantId();
+    if (id) {
+      setTenantId(id);
+      Promise.all([
+        dfetch(`${API_BASE}/api/users/${id}`).then((r) => r.json()),
+        dfetch(`${API_BASE}/api/departments/${id}`).then((r) => r.json()),
+      ])
+        .then(([usersData, deptsData]) => {
+          setMembers(Array.isArray(usersData) ? usersData : []);
+          setDepartments(Array.isArray(deptsData) ? deptsData : []);
+        })
+        .catch(() => {})
+        .finally(() => setLoading(false));
+    } else {
+      setLoading(false);
+    }
   }, []);
 
   const handleCreateDepartment = async () => {
     if (!newDeptName) return;
     setSaving(true);
     try {
-      const res = await fetch("${API_BASE}/api/departments", {
+      const res = await dfetch(`${API_BASE}/api/departments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -106,14 +103,14 @@ export default function TeamPage() {
 
   const handleDeleteDepartment = async (id: string) => {
     try {
-      await fetch(`${API_BASE}/api/departments/${id}`, { method: "DELETE" });
+      await dfetch(`${API_BASE}/api/departments/${id}`, { method: "DELETE" });
       setDepartments(departments.filter((d) => d.id !== id));
     } catch {}
   };
 
   const handleUpdateAgentStatus = async (userId: string, status: string) => {
     try {
-      await fetch(`${API_BASE}/api/users/${userId}/status`, {
+      await dfetch(`${API_BASE}/api/users/${userId}/status`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
@@ -126,7 +123,7 @@ export default function TeamPage() {
     if (!newMemberName || !newMemberEmail || !tenantId) return;
     setSaving(true);
     try {
-      const res = await fetch(`${API_BASE}/api/users/${tenantId}/invite`, {
+      const res = await dfetch(`${API_BASE}/api/users/${tenantId}/invite`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ fullName: newMemberName, email: newMemberEmail, role: newMemberRole }),
@@ -145,12 +142,12 @@ export default function TeamPage() {
 
   const handleAddDeptMember = async (deptId: string, userId: string) => {
     try {
-      await fetch(`${API_BASE}/api/departments/${deptId}/members`, {
+      await dfetch(`${API_BASE}/api/departments/${deptId}/members`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId }),
       });
-      const deptsRes = await fetch(`${API_BASE}/api/departments/${tenantId}`);
+      const deptsRes = await dfetch(`${API_BASE}/api/departments/${tenantId}`);
       const deptsData = await deptsRes.json();
       if (Array.isArray(deptsData)) setDepartments(deptsData);
       setShowAddDeptMember(null);
@@ -159,8 +156,8 @@ export default function TeamPage() {
 
   const handleRemoveDeptMember = async (deptId: string, memberId: string) => {
     try {
-      await fetch(`${API_BASE}/api/departments/${deptId}/members/${memberId}`, { method: "DELETE" });
-      const deptsRes = await fetch(`${API_BASE}/api/departments/${tenantId}`);
+      await dfetch(`${API_BASE}/api/departments/${deptId}/members/${memberId}`, { method: "DELETE" });
+      const deptsRes = await dfetch(`${API_BASE}/api/departments/${tenantId}`);
       const deptsData = await deptsRes.json();
       if (Array.isArray(deptsData)) setDepartments(deptsData);
     } catch {}

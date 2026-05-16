@@ -2,6 +2,20 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { db, tenants, customers, conversations, messages, orders, appointments, products, categories, users, aiKnowledge, aiUnanswered, tenantConfig, payments, analyticsDaily } from '@saas/db';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { llmClient } from '../../lib/llm-client';
+import { verifyTenantAccess, JWTPayload } from '../../plugins/auth';
+import bcrypt from 'bcrypt';
+import { encrypt, safeDecrypt } from '../../lib/encryption';
+
+// Keys that contain secrets and must be stored encrypted
+const SENSITIVE_CONFIG_KEYS = new Set([
+  'wompi_private_key',
+  'wompi_public_key',
+  'evolution_api_key',
+  'waha_api_key',
+  'openai_api_key',
+  'anthropic_api_key',
+  'groq_api_key',
+]);
 
 export async function apiRoutes(server: FastifyInstance) {
 
@@ -84,16 +98,94 @@ export async function apiRoutes(server: FastifyInstance) {
 
   server.post('/conversations/:tenantId/:conversationId/messages', async (request: FastifyRequest, reply: FastifyReply) => {
     const { tenantId, conversationId } = request.params as { tenantId: string; conversationId: string };
-    const { text } = request.body as { text: string };
+    if (!verifyTenantAccess(request, reply, tenantId)) return;
+    const body = request.body as { text?: string; content?: string; senderType?: string };
+    const text = body.content || body.text || '';
     try {
       const [msg] = await db.insert(messages).values({
         tenantId,
         conversationId,
         direction: 'outbound',
+        senderType: body.senderType || 'agent',
         content: { type: 'text', text },
       }).returning();
       await db.update(conversations).set({ lastMessageAt: new Date() }).where(eq(conversations.id, conversationId));
       return msg;
+    } catch (err: any) {
+      return reply.status(500).send({ error: err.message });
+    }
+  });
+
+  server.post('/conversations/:tenantId/:conversationId/transfer', async (request: FastifyRequest, reply: FastifyReply) => {
+    const { tenantId, conversationId } = request.params as { tenantId: string; conversationId: string };
+    if (!verifyTenantAccess(request, reply, tenantId)) return;
+    const { toAgentId } = request.body as { toAgentId: string };
+    try {
+      const [agent] = await db.select().from(users).where(eq(users.id, toAgentId)).limit(1);
+      if (!agent) return reply.status(404).send({ error: 'Agent not found' });
+      await db.update(conversations).set({
+        assignedAgentId: toAgentId,
+        status: 'active',
+        updatedAt: new Date(),
+      }).where(and(eq(conversations.id, conversationId), eq(conversations.tenantId, tenantId)));
+      return { success: true, agentName: agent.fullName };
+    } catch (err: any) {
+      return reply.status(500).send({ error: err.message });
+    }
+  });
+
+  server.post('/conversations/:tenantId/:conversationId/close', async (request: FastifyRequest, reply: FastifyReply) => {
+    const { tenantId, conversationId } = request.params as { tenantId: string; conversationId: string };
+    if (!verifyTenantAccess(request, reply, tenantId)) return;
+    try {
+      await db.update(conversations).set({
+        status: 'closed',
+        updatedAt: new Date(),
+      }).where(and(eq(conversations.id, conversationId), eq(conversations.tenantId, tenantId)));
+      return { success: true };
+    } catch (err: any) {
+      return reply.status(500).send({ error: err.message });
+    }
+  });
+
+  server.get('/customers/:tenantId/:customerId/profile', async (request: FastifyRequest, reply: FastifyReply) => {
+    const { tenantId, customerId } = request.params as { tenantId: string; customerId: string };
+    try {
+      const [customer] = await db.select().from(customers)
+        .where(and(eq(customers.id, customerId), eq(customers.tenantId, tenantId))).limit(1);
+      if (!customer) return reply.status(404).send({ error: 'Customer not found' });
+
+      const customerOrders = await db.select().from(orders)
+        .where(and(eq(orders.customerId, customerId), eq(orders.tenantId, tenantId)))
+        .orderBy(desc(orders.createdAt)).limit(5);
+
+      const customerAppointments = await db.select().from(appointments)
+        .where(and(eq(appointments.customerId, customerId), eq(appointments.tenantId, tenantId)))
+        .orderBy(desc(appointments.scheduledAt)).limit(3);
+
+      const totalSpent = customerOrders
+        .filter(o => o.status === 'paid')
+        .reduce((acc, o) => acc + Number(o.total), 0);
+
+      return {
+        name: customer.displayName || customer.fullName || 'Cliente',
+        phone: customer.phone || '',
+        email: customer.email || null,
+        channel: customer.channel || 'whatsapp',
+        tags: (customer.tags as string[]) || [],
+        orders: customerOrders.map(o => ({ id: o.id, orderNumber: o.orderNumber, amount: Number(o.total), status: o.status })),
+        appointments: customerAppointments.map(a => ({
+          id: a.id,
+          date: a.scheduledAt,
+          service: a.serviceName,
+          status: a.status,
+        })),
+        metrics: {
+          totalOrders: customerOrders.length,
+          totalSpent,
+          lastActivity: customer.updatedAt,
+        },
+      };
     } catch (err: any) {
       return reply.status(500).send({ error: err.message });
     }
@@ -116,6 +208,7 @@ export async function apiRoutes(server: FastifyInstance) {
 
   server.post('/products/:tenantId', async (request: FastifyRequest, reply: FastifyReply) => {
     const { tenantId } = request.params as { tenantId: string };
+    if (!verifyTenantAccess(request, reply, tenantId)) return;
     const data = request.body as any;
     try {
       const [product] = await db.insert(products).values({ ...data, tenantId }).returning();
@@ -127,6 +220,7 @@ export async function apiRoutes(server: FastifyInstance) {
 
   server.put('/products/:tenantId/:productId', async (request: FastifyRequest, reply: FastifyReply) => {
     const { tenantId, productId } = request.params as { tenantId: string; productId: string };
+    if (!verifyTenantAccess(request, reply, tenantId)) return;
     const data = request.body as any;
     try {
       const [product] = await db.update(products).set(data)
@@ -140,6 +234,7 @@ export async function apiRoutes(server: FastifyInstance) {
 
   server.delete('/products/:tenantId/:productId', async (request: FastifyRequest, reply: FastifyReply) => {
     const { tenantId, productId } = request.params as { tenantId: string; productId: string };
+    if (!verifyTenantAccess(request, reply, tenantId)) return;
     try {
       await db.delete(products).where(and(eq(products.id, productId), eq(products.tenantId, tenantId)));
       return { success: true };
@@ -159,12 +254,44 @@ export async function apiRoutes(server: FastifyInstance) {
     }
   });
 
+  server.put('/orders/:tenantId/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+    const { tenantId, id } = request.params as { tenantId: string; id: string };
+    if (!verifyTenantAccess(request, reply, tenantId)) return;
+    const { status } = request.body as { status: string };
+    try {
+      const [order] = await db.update(orders)
+        .set({ status, updatedAt: new Date() })
+        .where(and(eq(orders.id, id), eq(orders.tenantId, tenantId)))
+        .returning();
+      if (!order) return reply.status(404).send({ error: 'Order not found' });
+      return order;
+    } catch (err: any) {
+      return reply.status(500).send({ error: err.message });
+    }
+  });
+
   // --- APPOINTMENTS ---
   server.get('/appointments/:tenantId', async (request: FastifyRequest, reply: FastifyReply) => {
     const { tenantId } = request.params as { tenantId: string };
     try {
       const apts = await db.select().from(appointments).where(eq(appointments.tenantId, tenantId)).orderBy(desc(appointments.scheduledAt));
       return apts;
+    } catch (err: any) {
+      return reply.status(500).send({ error: err.message });
+    }
+  });
+
+  server.put('/appointments/:tenantId/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+    const { tenantId, id } = request.params as { tenantId: string; id: string };
+    if (!verifyTenantAccess(request, reply, tenantId)) return;
+    const { status } = request.body as { status: string };
+    try {
+      const [apt] = await db.update(appointments)
+        .set({ status, updatedAt: new Date() })
+        .where(and(eq(appointments.id, id), eq(appointments.tenantId, tenantId)))
+        .returning();
+      if (!apt) return reply.status(404).send({ error: 'Appointment not found' });
+      return apt;
     } catch (err: any) {
       return reply.status(500).send({ error: err.message });
     }
@@ -183,27 +310,36 @@ export async function apiRoutes(server: FastifyInstance) {
 
   server.post('/users/:tenantId/invite', async (request: FastifyRequest, reply: FastifyReply) => {
     const { tenantId } = request.params as { tenantId: string };
+    if (!verifyTenantAccess(request, reply, tenantId)) return;
     const data = request.body as any;
+    if (!data.email || !data.fullName) return reply.status(400).send({ error: 'email y fullName son requeridos' });
     try {
+      const tempPassword = Math.random().toString(36).slice(-10);
+      const passwordHash = await bcrypt.hash(tempPassword, 10);
       const [user] = await db.insert(users).values({
         tenantId,
         email: data.email,
         fullName: data.fullName,
         role: data.role || 'agent',
-        passwordHash: '',
+        passwordHash,
         isActive: true,
       }).returning();
-      return user;
+      return { ...user, tempPassword };
     } catch (err: any) {
       return reply.status(500).send({ error: err.message });
     }
   });
 
   // --- TENANTS ---
-  server.get('/tenants', async (_request: FastifyRequest, reply: FastifyReply) => {
+  server.get('/tenants', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const allTenants = await db.select().from(tenants).orderBy(desc(tenants.createdAt));
-      return allTenants;
+      const user = request.user as JWTPayload;
+      if (user.type === 'superadmin') {
+        const allTenants = await db.select().from(tenants).orderBy(desc(tenants.createdAt));
+        return allTenants;
+      }
+      const [tenant] = await db.select().from(tenants).where(eq(tenants.id, user.tenantId)).limit(1);
+      return tenant ? [tenant] : [];
     } catch (err: any) {
       return reply.status(500).send({ error: err.message });
     }
@@ -222,6 +358,7 @@ export async function apiRoutes(server: FastifyInstance) {
 
   server.put('/tenants/:tenantId', async (request: FastifyRequest, reply: FastifyReply) => {
     const { tenantId } = request.params as { tenantId: string };
+    if (!verifyTenantAccess(request, reply, tenantId)) return;
     const data = request.body as any;
     try {
       const [tenant] = await db.update(tenants).set({
@@ -257,6 +394,7 @@ export async function apiRoutes(server: FastifyInstance) {
 
   server.put('/ai/config/:tenantId', async (request: FastifyRequest, reply: FastifyReply) => {
     const { tenantId } = request.params as { tenantId: string };
+    if (!verifyTenantAccess(request, reply, tenantId)) return;
     const data = request.body as any;
     try {
       const [tenant] = await db.update(tenants).set({
@@ -286,6 +424,7 @@ export async function apiRoutes(server: FastifyInstance) {
 
   server.post('/ai/knowledge/:tenantId', async (request: FastifyRequest, reply: FastifyReply) => {
     const { tenantId } = request.params as { tenantId: string };
+    if (!verifyTenantAccess(request, reply, tenantId)) return;
     const data = request.body as any;
     try {
       let embedding: number[] | null = null;
@@ -311,6 +450,7 @@ export async function apiRoutes(server: FastifyInstance) {
 
   server.delete('/ai/knowledge/:tenantId/:knowledgeId', async (request: FastifyRequest, reply: FastifyReply) => {
     const { tenantId, knowledgeId } = request.params as { tenantId: string; knowledgeId: string };
+    if (!verifyTenantAccess(request, reply, tenantId)) return;
     try {
       await db.delete(aiKnowledge).where(and(eq(aiKnowledge.id, knowledgeId), eq(aiKnowledge.tenantId, tenantId)));
       return { success: true };
@@ -395,8 +535,9 @@ export async function apiRoutes(server: FastifyInstance) {
   // Guardar/actualizar configuración del tenant
   server.put('/tenant-config/:tenantId', async (request: FastifyRequest, reply: FastifyReply) => {
     const { tenantId } = request.params as { tenantId: string };
+    if (!verifyTenantAccess(request, reply, tenantId)) return;
     const data = request.body as Record<string, any>;
-    
+
     try {
       // Para cada key en el body, upsert en tenantConfig
       for (const [key, value] of Object.entries(data)) {
@@ -436,6 +577,7 @@ export async function apiRoutes(server: FastifyInstance) {
   // Eliminar configuración específica
   server.delete('/tenant-config/:tenantId/:key', async (request: FastifyRequest, reply: FastifyReply) => {
     const { tenantId, key } = request.params as { tenantId: string; key: string };
+    if (!verifyTenantAccess(request, reply, tenantId)) return;
     try {
       await db.delete(tenantConfig)
         .where(and(eq(tenantConfig.tenantId, tenantId), eq(tenantConfig.key, key)));
@@ -454,7 +596,11 @@ export async function apiRoutes(server: FastifyInstance) {
     try {
       const configs = await db.select().from(tenantConfig).where(eq(tenantConfig.tenantId, tenantId));
       const configMap: Record<string, any> = {};
-      for (const config of configs) configMap[config.key] = config.value;
+      for (const config of configs) {
+        configMap[config.key] = SENSITIVE_CONFIG_KEYS.has(config.key) && typeof config.value === 'string'
+          ? (safeDecrypt(config.value) ?? config.value)
+          : config.value;
+      }
       return configMap;
     } catch (err: any) {
       return reply.status(500).send({ error: err.message });
@@ -463,9 +609,13 @@ export async function apiRoutes(server: FastifyInstance) {
 
   server.put('/tenants/:tenantId/config', async (request: FastifyRequest, reply: FastifyReply) => {
     const { tenantId } = request.params as { tenantId: string };
+    if (!verifyTenantAccess(request, reply, tenantId)) return;
     const data = request.body as Record<string, any>;
     try {
-      for (const [key, value] of Object.entries(data)) {
+      for (const [key, rawValue] of Object.entries(data)) {
+        const value = SENSITIVE_CONFIG_KEYS.has(key) && typeof rawValue === 'string' && rawValue
+          ? encrypt(rawValue)
+          : rawValue;
         await db.insert(tenantConfig)
           .values({ tenantId, key, value })
           .onConflictDoUpdate({
@@ -528,6 +678,7 @@ export async function apiRoutes(server: FastifyInstance) {
 
   server.put('/ai/knowledge/:tenantId/:knowledgeId', async (request: FastifyRequest, reply: FastifyReply) => {
     const { tenantId, knowledgeId } = request.params as { tenantId: string; knowledgeId: string };
+    if (!verifyTenantAccess(request, reply, tenantId)) return;
     const data = request.body as any;
     try {
       const [existing] = await db.select().from(aiKnowledge)

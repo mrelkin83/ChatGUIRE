@@ -5,7 +5,7 @@ import { logger } from '../../lib/logger';
 import { llmClient } from '../../lib/llm-client';
 import { buildClientContext } from './ai.context-builder';
 import { buildSystemPrompt } from './ai.prompt-builder';
-import { parseAIAction } from './ai.action-parser';
+import { parseAIAction, extractFirstJson } from './ai.action-parser';
 import { executeAIAction } from './ai.action-router';
 import { searchKnowledge } from './knowledge/knowledge-base.service';
 import { channelManager } from '../channels/core/channel-manager';
@@ -79,10 +79,8 @@ export class AIEngine {
       timezone: tenant.timezone,
     });
 
-    // Load tenant's primary LLM integration
-    await llmClient.loadTenantIntegration(input.tenantId);
-
     const respuestaIA = await llmClient.chat({
+      tenantId: input.tenantId,
       model: tenant.ai_model,
       systemPrompt,
       messages: historial.slice(-10),
@@ -115,7 +113,10 @@ export class AIEngine {
       });
 
     if (!accion) {
-      const textoLimpio = respuestaIA.replace(/\{[^{}]*"accion"[^{}]*\}/g, '').trim();
+      const jsonFragment = extractFirstJson(respuestaIA);
+      const textoLimpio = jsonFragment
+        ? respuestaIA.replace(jsonFragment, '').trim()
+        : respuestaIA.trim();
       if (textoLimpio) {
         await this.respond(input, textoLimpio);
       }
@@ -150,6 +151,7 @@ export class AIEngine {
       tenantId: input.tenantId,
       conversationId: input.conversationId,
       direction: 'outbound',
+      senderType: 'ai',
       content: { type: 'text', text } as any,
     });
   }

@@ -19,5 +19,6 @@ export const AI_ACTIONS = [
   'VER_ESTADO_PEDIDO',
   'VER_CITAS',
   'SCALAMIENTO',
+  'CREAR_RESERVA',
 ] as const;
 export type AIActionType = (typeof AI_ACTIONS)[number];

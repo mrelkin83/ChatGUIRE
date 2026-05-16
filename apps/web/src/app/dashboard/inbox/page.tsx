@@ -34,11 +34,13 @@ import {
   Inbox,
 } from "lucide-react";
 
-import { API_BASE } from "@/lib/api";
+import { API_BASE, dfetch, getTenantId } from "@/lib/api";
+import { useInboxSSE } from "@/hooks/useInboxSSE";
 const API = `${API_BASE}/api`;
 
 interface Conversation {
   id: string;
+  customerId: string;
   customerName: string;
   customerPhone?: string;
   channel: string;
@@ -146,14 +148,15 @@ export default function InboxPage() {
   const [transferring, setTransferring] = useState(false);
   const [mobileView, setMobileView] = useState<MobileView>("list");
   const [isTyping, setIsTyping] = useState(false);
+  const [customerProfile, setCustomerProfile] = useState<CustomerProfile | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const fetchData = useCallback(async (tid: string) => {
     try {
       const [convRes, agentsRes] = await Promise.all([
-        fetch(`${API}/conversations/${tid}`),
-        fetch(`${API}/users/${tid}`),
+        dfetch(`${API}/conversations/${tid}`),
+        dfetch(`${API}/users/${tid}`),
       ]);
       const convData = await convRes.json();
       const agentsData = await agentsRes.json();
@@ -163,35 +166,55 @@ export default function InboxPage() {
   }, []);
 
   useEffect(() => {
-    fetch(`${API}/tenants`)
-      .then((r) => r.json())
-      .then(async (tenants) => {
-        if (Array.isArray(tenants) && tenants.length > 0) {
-          const id = tenants[0].id;
-          setTenantId(id);
-          await fetchData(id);
-        }
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    const id = getTenantId();
+    if (id) {
+      setTenantId(id);
+      fetchData(id).finally(() => setLoading(false));
+    } else {
+      setLoading(false);
+    }
   }, [fetchData]);
+
+  // SSE para actualizaciones en tiempo real — fallback a polling cada 30s
+  useInboxSSE({
+    onMessage: (msg) => {
+      if (!msg.conversationId) return;
+      setMessagesMap((prev) => ({
+        ...prev,
+        [msg.conversationId]: [...(prev[msg.conversationId] || []), msg as any],
+      }));
+      if (tenantId) fetchData(tenantId);
+    },
+    onStatus: () => {
+      if (tenantId) fetchData(tenantId);
+    },
+  });
 
   useEffect(() => {
     const interval = setInterval(async () => {
       if (tenantId) await fetchData(tenantId);
-    }, 8000);
+    }, 30000);
     return () => clearInterval(interval);
   }, [tenantId, fetchData]);
 
   useEffect(() => {
     if (!selectedId || !tenantId) return;
-    fetch(`${API}/conversations/${tenantId}/${selectedId}/messages`)
+    setCustomerProfile(null);
+    dfetch(`${API}/conversations/${tenantId}/${selectedId}/messages`)
       .then((r) => r.json())
       .then((data) => {
         const msgs = Array.isArray(data) ? data : [];
         setMessagesMap((prev) => ({ ...prev, [selectedId]: msgs }));
       })
       .catch(() => {});
+    // Load customer profile
+    const conv = conversations.find((c) => c.id === selectedId);
+    if (conv?.customerId) {
+      dfetch(`${API}/customers/${tenantId}/${conv.customerId}/profile`)
+        .then((r) => r.json())
+        .then((p) => setCustomerProfile(p))
+        .catch(() => {});
+    }
   }, [selectedId, tenantId]);
 
   useEffect(() => {
@@ -212,12 +235,12 @@ export default function InboxPage() {
     setNewMessage("");
     setSending(true);
     try {
-      await fetch(`${API}/conversations/${tenantId}/${selectedId}/messages`, {
+      await dfetch(`${API}/conversations/${tenantId}/${selectedId}/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: text, senderType: "agent" }),
       });
-      const r = await fetch(`${API}/conversations/${tenantId}/${selectedId}/messages`);
+      const r = await dfetch(`${API}/conversations/${tenantId}/${selectedId}/messages`);
       const data = await r.json();
       setMessagesMap((prev) => ({
         ...prev,
@@ -228,10 +251,10 @@ export default function InboxPage() {
   };
 
   const handleTransfer = async (toAgentId: string) => {
-    if (!selectedId) return;
+    if (!selectedId || !tenantId) return;
     setTransferring(true);
     try {
-      await fetch(`${API}/conversations/${selectedId}/transfer`, {
+      await dfetch(`${API}/conversations/${tenantId}/${selectedId}/transfer`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ toAgentId }),
@@ -243,9 +266,9 @@ export default function InboxPage() {
   };
 
   const handleClose = async () => {
-    if (!selectedId) return;
+    if (!selectedId || !tenantId) return;
     try {
-      await fetch(`${API}/conversations/${selectedId}/close`, { method: "POST" });
+      await dfetch(`${API}/conversations/${tenantId}/${selectedId}/close`, { method: "POST" });
       await fetchData(tenantId);
       setSelectedId(null);
       setMobileView("list");
@@ -946,14 +969,23 @@ export default function InboxPage() {
                   <ShoppingBag className="h-3.5 w-3.5" />
                   Pedidos recientes
                 </h4>
-                <div
-                  className="rounded-xl p-3 text-center"
-                  style={{ background: "var(--bg-surface-2)" }}
-                >
-                  <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>
-                    Sin pedidos registrados
-                  </p>
-                </div>
+                {customerProfile?.orders?.length ? (
+                  <div className="space-y-1.5">
+                    {customerProfile.orders.map((o) => (
+                      <div key={o.id} className="flex items-center justify-between rounded-lg px-3 py-2" style={{ background: "var(--bg-surface-2)" }}>
+                        <span className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>#{o.orderNumber}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs" style={{ color: "var(--text-secondary)" }}>{formatCOP(o.amount)}</span>
+                          <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium", o.status === "paid" ? "bg-emerald-500/10 text-emerald-400" : "bg-amber-500/10 text-amber-400")}>{o.status}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-xl p-3 text-center" style={{ background: "var(--bg-surface-2)" }}>
+                    <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Sin pedidos registrados</p>
+                  </div>
+                )}
               </div>
 
               {/* Appointments */}
@@ -965,14 +997,22 @@ export default function InboxPage() {
                   <CalendarDays className="h-3.5 w-3.5" />
                   Próxima cita
                 </h4>
-                <div
-                  className="rounded-xl p-3 text-center"
-                  style={{ background: "var(--bg-surface-2)" }}
-                >
-                  <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>
-                    Sin citas programadas
-                  </p>
-                </div>
+                {customerProfile?.appointments?.length ? (
+                  <div className="space-y-1.5">
+                    {customerProfile.appointments.slice(0, 2).map((a) => (
+                      <div key={a.id} className="rounded-lg px-3 py-2" style={{ background: "var(--bg-surface-2)" }}>
+                        <p className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>{a.service}</p>
+                        <p className="text-[10px] mt-0.5" style={{ color: "var(--text-tertiary)" }}>
+                          {new Date(a.date).toLocaleDateString("es-CO", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-xl p-3 text-center" style={{ background: "var(--bg-surface-2)" }}>
+                    <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Sin citas programadas</p>
+                  </div>
+                )}
               </div>
 
               {/* Tags */}
@@ -985,8 +1025,13 @@ export default function InboxPage() {
                   Tags
                 </h4>
                 <div className="flex flex-wrap gap-1.5">
-                  <span className="badge badge-primary text-[10px]">Nuevo lead</span>
-                  <span className="badge badge-purple text-[10px]">WhatsApp</span>
+                  {customerProfile?.tags?.length ? (
+                    customerProfile.tags.map((tag, i) => (
+                      <span key={i} className="badge badge-primary text-[10px]">{tag}</span>
+                    ))
+                  ) : (
+                    <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>Sin etiquetas</span>
+                  )}
                 </div>
               </div>
 
@@ -1000,38 +1045,25 @@ export default function InboxPage() {
                   Métricas
                 </h4>
                 <div className="grid grid-cols-3 gap-2">
-                  <div
-                    className="rounded-xl p-3 text-center"
-                    style={{ background: "var(--bg-surface-2)" }}
-                  >
+                  <div className="rounded-xl p-3 text-center" style={{ background: "var(--bg-surface-2)" }}>
                     <p className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>
-                      0
+                      {customerProfile?.metrics?.totalOrders ?? 0}
                     </p>
-                    <p className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>
-                      Pedidos
-                    </p>
+                    <p className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>Pedidos</p>
                   </div>
-                  <div
-                    className="rounded-xl p-3 text-center"
-                    style={{ background: "var(--bg-surface-2)" }}
-                  >
+                  <div className="rounded-xl p-3 text-center" style={{ background: "var(--bg-surface-2)" }}>
                     <p className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>
-                      $0
+                      {customerProfile ? formatCOP(customerProfile.metrics.totalSpent) : "$0"}
                     </p>
-                    <p className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>
-                      Gasto
-                    </p>
+                    <p className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>Gasto</p>
                   </div>
-                  <div
-                    className="rounded-xl p-3 text-center"
-                    style={{ background: "var(--bg-surface-2)" }}
-                  >
+                  <div className="rounded-xl p-3 text-center" style={{ background: "var(--bg-surface-2)" }}>
                     <p className="text-lg font-bold" style={{ color: "var(--accent-primary)" }}>
-                      --
+                      {customerProfile?.metrics?.lastActivity
+                        ? formatRelativeTime(customerProfile.metrics.lastActivity)
+                        : "--"}
                     </p>
-                    <p className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>
-                      Última
-                    </p>
+                    <p className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>Última</p>
                   </div>
                 </div>
               </div>

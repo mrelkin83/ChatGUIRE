@@ -15,7 +15,7 @@ import {
 import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { API_BASE } from "@/lib/api";
+import { API_BASE, dfetch, getTenantId } from "@/lib/api";
 
 const CHANNEL_COLORS: Record<string, string> = {
   whatsapp: "#25D366",
@@ -113,9 +113,9 @@ export default function AnalyticsPage() {
   const [period, setPeriod] = useState("7d");
 
   useEffect(() => {
-    const tenantId = typeof window !== "undefined" ? localStorage.getItem("tenant_id") : null;
+    const tenantId = getTenantId();
     if (!tenantId) { setLoading(false); return; }
-    fetch(`${API_BASE}/api/analytics/${tenantId}`)
+    dfetch(`${API_BASE}/api/analytics/${tenantId}`)
       .then((r) => r.json())
       .then((d) => { if (d.error) setError(d.error); else setData(d); })
       .catch(() => setError("Error al cargar analíticas"))

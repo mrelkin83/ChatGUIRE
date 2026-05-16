@@ -13,6 +13,7 @@ export class EvolutionApiClient {
   constructor() {
     this.axios = axios.create({
       baseURL: process.env.EVOLUTION_API_URL || 'http://evolution-api:8080',
+      timeout: 15_000,
       headers: {
         apikey: process.env.EVOLUTION_API_GLOBAL_KEY || '',
       },

@@ -35,7 +35,7 @@ import { Toggle } from "@/components/ui/toggle";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/utils";
 
-import { API_BASE } from "@/lib/api";
+import { API_BASE, dfetch, getTenantId } from "@/lib/api";
 const API = API_BASE;
 
 interface BotMenuRecord {
@@ -170,46 +170,42 @@ export default function BotConfigPage() {
 
   useEffect(() => {
     let mounted = true;
-    (async () => {
-      try {
-        const tenantsRes = await fetch(`${API}/api/tenants`);
-        const tenants = await tenantsRes.json();
-        if (tenants.length > 0 && mounted) {
-          const id = tenants[0].id;
-          setTenantId(id);
-
-          try {
-            const configRes = await fetch(`${API}/api/tenants/${id}/config`);
-            const config = await configRes.json();
-            if (config) {
-              if (config.bot_name) setBotName(config.bot_name);
-              if (config.bot_welcome_message) setWelcomeMessage(config.bot_welcome_message);
-              if (config.bot_off_hours_message) setOffHoursMessage(config.bot_off_hours_message);
-              if (config.bot_trigger_type) setTriggerType(config.bot_trigger_type);
-              if (config.bot_trigger_keywords) setTriggerKeywords(config.bot_trigger_keywords);
-              if (config.bot_channels) setSelectedChannels(config.bot_channels);
-              if (config.bot_is_active !== undefined) setIsActive(config.bot_is_active);
-            }
-          } catch {}
-
-          try {
-            const menusRes = await fetch(`${API}/api/bot-menus?tenantId=${id}`);
-            const menusData = await menusRes.json();
-            if (Array.isArray(menusData) && menusData.length > 0) {
-              setMenus(menusData);
-            }
-          } catch {}
-        }
-      } catch {}
-      if (mounted) setLoading(false);
-    })();
+    const id = getTenantId();
+    if (id) {
+      setTenantId(id);
+      (async () => {
+        try {
+          const configRes = await dfetch(`${API}/api/tenants/${id}/config`);
+          const config = await configRes.json();
+          if (config) {
+            if (config.bot_name) setBotName(config.bot_name);
+            if (config.bot_welcome_message) setWelcomeMessage(config.bot_welcome_message);
+            if (config.bot_off_hours_message) setOffHoursMessage(config.bot_off_hours_message);
+            if (config.bot_trigger_type) setTriggerType(config.bot_trigger_type);
+            if (config.bot_trigger_keywords) setTriggerKeywords(config.bot_trigger_keywords);
+            if (config.bot_channels) setSelectedChannels(config.bot_channels);
+            if (config.bot_is_active !== undefined) setIsActive(config.bot_is_active);
+          }
+        } catch {}
+        try {
+          const menusRes = await dfetch(`${API}/api/bot-menus?tenantId=${id}`);
+          const menusData = await menusRes.json();
+          if (Array.isArray(menusData) && menusData.length > 0) {
+            setMenus(menusData);
+          }
+        } catch {}
+        if (mounted) setLoading(false);
+      })();
+    } else {
+      setLoading(false);
+    }
     return () => { mounted = false; };
   }, []);
 
   const handleSaveConfig = async () => {
     setSaving(true);
     try {
-      const res = await fetch(`${API}/api/tenants/${tenantId}/config`, {
+      const res = await dfetch(`${API}/api/tenants/${tenantId}/config`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -265,7 +261,7 @@ export default function BotConfigPage() {
       return;
     }
     try {
-      const res = await fetch(`${API}/api/bot-menus`, {
+      const res = await dfetch(`${API}/api/bot-menus`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -305,7 +301,7 @@ export default function BotConfigPage() {
 
   const handleDeleteMenu = async (id: string) => {
     try {
-      const res = await fetch(`${API}/api/bot-menus/${id}`, { method: "DELETE" });
+      const res = await dfetch(`${API}/api/bot-menus/${id}`, { method: "DELETE" });
       if (res.ok) {
         setMenus(menus.filter((m) => m.id !== id));
         toast.success("Menú eliminado");
@@ -323,7 +319,7 @@ export default function BotConfigPage() {
     if (!menu) return;
     const newActive = !menu.isActive;
     try {
-      const res = await fetch(`${API}/api/bot-menus/${id}`, {
+      const res = await dfetch(`${API}/api/bot-menus/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isActive: newActive }),
@@ -339,7 +335,7 @@ export default function BotConfigPage() {
 
   const handleDuplicateMenu = async (id: string) => {
     try {
-      const res = await fetch(`${API}/api/bot-menus/${id}/duplicate`, { method: "POST" });
+      const res = await dfetch(`${API}/api/bot-menus/${id}/duplicate`, { method: "POST" });
       if (res.ok) {
         const dup = await res.json();
         setMenus([dup, ...menus]);
@@ -374,7 +370,7 @@ export default function BotConfigPage() {
   const handleSaveEditMenu = async () => {
     if (!editMenuId || !editMenuName) return;
     try {
-      const res = await fetch(`${API}/api/bot-menus/${editMenuId}`, {
+      const res = await dfetch(`${API}/api/bot-menus/${editMenuId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

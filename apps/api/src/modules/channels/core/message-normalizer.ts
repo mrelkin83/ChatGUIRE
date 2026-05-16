@@ -16,7 +16,7 @@ export const messageNormalizer = {
         type: 'text', // simplification for now
         text: payload.data?.message?.conversation || payload.data?.message?.extendedTextMessage?.text || '',
       },
-      timestamp: new Date(payload.data?.messageTimestamp * 1000) || new Date(),
+      timestamp: payload.data?.messageTimestamp ? new Date(payload.data.messageTimestamp * 1000) : new Date(),
       metadata: payload,
     };
   },

@@ -1,7 +1,8 @@
 import { ActionProcessorInput } from './crear-cita.processor';
 import { db, orders, payments } from '@saas/db';
 import { eq, desc } from 'drizzle-orm';
-import { wompiClient } from '../../../lib/wompi-client';
+import { WompiClient } from '../../../lib/wompi-client';
+import { getConfig } from '../../../lib/tenant-config';
 import { channelManager } from '../../channels/core/channel-manager';
 import { formatCOP } from '@saas/shared';
 import { logger } from '../../../lib/logger';
@@ -33,9 +34,12 @@ export async function processEnviarPago(params: ActionProcessorInput): Promise<v
     return;
   }
 
-  // 2. Create Wompi payment link
+  // 2. Create Wompi payment link using tenant-specific credentials
+  const wompiConfig = await getConfig<{ mode?: string; privateKey?: string }>(tenantId, 'wompi', {});
+  const client = WompiClient.forTenant({ wompiMode: wompiConfig.mode, wompiPrivateKey: wompiConfig.privateKey });
+
   const amountCents = Math.round(Number(order.total) * 100);
-  const paymentLink = await wompiClient.createPaymentLink({
+  const paymentLink = await client.createPaymentLink({
     name: `Pago Pedido #${order.orderNumber}`,
     description: `Pago en ${params.contextoCliente.nombre || 'nuestra tienda'}`,
     amountInCents: amountCents,

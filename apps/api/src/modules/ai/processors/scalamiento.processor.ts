@@ -81,6 +81,7 @@ export async function processScalamiento(params: ActionProcessorInput): Promise<
       tenantId,
       conversationId,
       direction: 'outbound',
+      senderType: 'system',
       content: { type: 'text', text: `🔔 Escalado a ${assignedAgent.fullName}` },
     });
   } else {
@@ -99,6 +100,7 @@ export async function processScalamiento(params: ActionProcessorInput): Promise<
       tenantId,
       conversationId,
       direction: 'outbound',
+      senderType: 'system',
       content: { type: 'text', text: `🔔 Escalamiento solicitado. En cola: posición ${queuePosition}` },
     });
   }

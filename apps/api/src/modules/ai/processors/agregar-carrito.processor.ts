@@ -25,26 +25,17 @@ export async function processAgregarCarrito(params: ActionProcessorInput): Promi
     return;
   }
 
-  // 2. Find or create active cart
-  let [activeCart] = await db
-    .select()
-    .from(carts)
-    .where(
-      and(
-        eq(carts.tenantId, tenantId),
-        eq(carts.customerId, customerId),
-        eq(carts.status, 'active')
-      )
-    )
-    .limit(1);
-
-  if (!activeCart) {
-    [activeCart] = await db.insert(carts).values({
-      tenantId,
-      customerId,
-      status: 'active',
-    }).returning();
-  }
+  // 2. Find or create active cart — use transaction to avoid race condition
+  let activeCart = await db.transaction(async (tx) => {
+    const [existing] = await tx
+      .select()
+      .from(carts)
+      .where(and(eq(carts.tenantId, tenantId), eq(carts.customerId, customerId), eq(carts.status, 'active')))
+      .limit(1);
+    if (existing) return existing;
+    const [created] = await tx.insert(carts).values({ tenantId, customerId, status: 'active' }).returning();
+    return created;
+  });
 
   // 3. Add item to cart
   await db.insert(cartItems).values({

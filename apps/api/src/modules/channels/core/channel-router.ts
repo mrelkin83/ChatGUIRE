@@ -1,7 +1,7 @@
 import { NormalizedMessage } from '@saas/shared';
 import { logger } from '../../../lib/logger';
 import { db, conversations, messages, customers } from '@saas/db';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { aiEngine } from '../../ai/ai.engine';
 import { isRateLimited } from './rate-limiter';
 import { tryBotMenu } from '../../ai/bot-menu.service';
@@ -15,59 +15,67 @@ export async function routeMessage(tenantId: string, normalized: NormalizedMessa
     return;
   }
 
-  // 1. Find or create customer
-  let [customer] = await db
+  // 1. Find or create customer — use upsert to avoid race conditions
+  await db.insert(customers).values({
+    tenantId,
+    externalId: normalized.senderId,
+    fullName: normalized.senderName,
+    phone: normalized.senderPhone,
+    displayName: normalized.senderName || normalized.senderPhone,
+  }).onConflictDoUpdate({
+    target: [customers.tenantId, customers.externalId],
+    set: {
+      fullName: sql`COALESCE(EXCLUDED.full_name, customers.full_name)`,
+      phone: sql`COALESCE(EXCLUDED.phone, customers.phone)`,
+      updatedAt: new Date(),
+    },
+  });
+
+  const [customer] = await db
     .select()
     .from(customers)
-    .where(
-      and(
-        eq(customers.tenantId, tenantId),
-        eq(customers.externalId, normalized.senderId)
-      )
-    )
+    .where(and(eq(customers.tenantId, tenantId), eq(customers.externalId, normalized.senderId)))
     .limit(1);
 
-  if (!customer) {
-    [customer] = await db.insert(customers).values({
-      tenantId,
-      externalId: normalized.senderId,
-      fullName: normalized.senderName,
-      phone: normalized.senderPhone,
-      displayName: normalized.senderName || normalized.senderPhone,
-    }).returning();
-  }
+  // 2. Find or create conversation — upsert on (tenantId, customerId, channel)
+  await db.insert(conversations).values({
+    tenantId,
+    customerId: customer.id,
+    channel: normalized.channel,
+    status: 'open',
+  }).onConflictDoUpdate({
+    target: [conversations.tenantId, conversations.customerId, conversations.channel],
+    set: { lastMessageAt: new Date() },
+  });
 
-  // 2. Find or create conversation
-  let [conversation] = await db
+  const [conversation] = await db
     .select()
     .from(conversations)
-    .where(
-      and(
-        eq(conversations.tenantId, tenantId),
-        eq(conversations.customerId, customer.id),
-        eq(conversations.channel, normalized.channel)
-      )
-    )
+    .where(and(
+      eq(conversations.tenantId, tenantId),
+      eq(conversations.customerId, customer.id),
+      eq(conversations.channel, normalized.channel),
+    ))
     .limit(1);
 
-  if (!conversation) {
-    [conversation] = await db.insert(conversations).values({
-      tenantId,
-      customerId: customer.id,
-      channel: normalized.channel,
-      status: 'open',
-    }).returning();
-  } else {
-    await db.update(conversations)
-      .set({ lastMessageAt: new Date() })
-      .where(eq(conversations.id, conversation.id));
+  // 3. Save inbound message — skip if already processed (idempotency via externalId)
+  if (normalized.id) {
+    const [existing] = await db
+      .select({ id: messages.id })
+      .from(messages)
+      .where(and(eq(messages.tenantId, tenantId), eq(messages.externalId, normalized.id)))
+      .limit(1);
+    if (existing) {
+      logger.info(`Duplicate message ${normalized.id} ignored for tenant ${tenantId}`);
+      return;
+    }
   }
 
-  // 3. Save inbound message
   await db.insert(messages).values({
     tenantId,
     conversationId: conversation.id,
     direction: 'inbound',
+    externalId: normalized.id,
     content: normalized.content as any,
     timestamp: normalized.timestamp,
     metadata: normalized.metadata,

@@ -30,7 +30,7 @@ interface Product {
   duration?: number;
 }
 
-import { API_BASE } from "@/lib/api";
+import { API_BASE, dfetch, getTenantId } from "@/lib/api";
 const API = `${API_BASE}/api`;
 
 type TabKey = "todos" | "productos" | "servicios";
@@ -72,28 +72,19 @@ export default function CatalogPage() {
   });
 
   useEffect(() => {
-    fetch(`${API}/tenants`)
-      .then((r) => r.json())
-      .then((tenants) => {
-        if (Array.isArray(tenants) && tenants.length > 0) {
-          const id = tenants[0].id;
-          setTenantId(id);
-          loadProducts(id);
-        } else {
-          setLoading(false);
-          toast.error("No se encontró un tenant configurado");
-        }
-      })
-      .catch(() => {
-        setLoading(false);
-        toast.error("Error al conectar con el servidor");
-      });
+    const id = getTenantId();
+    if (id) {
+      setTenantId(id);
+      loadProducts(id);
+    } else {
+      setLoading(false);
+    }
   }, []);
 
   const loadProducts = async (id: string) => {
     setLoading(true);
     try {
-      const r = await fetch(`${API}/products?tenantId=${id}`);
+      const r = await dfetch(`${API}/products/${id}`);
       const data = await r.json();
       setProducts(Array.isArray(data) ? data : []);
     } catch {
@@ -155,7 +146,7 @@ export default function CatalogPage() {
         body.stock = form.stock;
         delete (body as any).duration;
       }
-      const res = await fetch(url, {
+      const res = await dfetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -173,7 +164,7 @@ export default function CatalogPage() {
 
   const handleToggleActive = async (p: Product) => {
     try {
-      const res = await fetch(`${API}/products/${tenantId}/${p.id}`, {
+      const res = await dfetch(`${API}/products/${tenantId}/${p.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...p, isActive: !p.isActive }),
@@ -188,7 +179,7 @@ export default function CatalogPage() {
 
   const handleDelete = async (productId: string) => {
     try {
-      const res = await fetch(`${API}/products/${tenantId}/${productId}`, { method: "DELETE" });
+      const res = await dfetch(`${API}/products/${tenantId}/${productId}`, { method: "DELETE" });
       if (!res.ok) throw new Error();
       setProducts(products.filter((p) => p.id !== productId));
       toast.success("Producto eliminado");

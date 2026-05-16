@@ -1,6 +1,11 @@
 import { db, customers, appointments, orders, products, carts, cartItems, tenantConfig, quotes, reservations } from '@saas/db';
 import { eq, and, desc } from 'drizzle-orm';
 import { dateHelpers } from '@saas/shared';
+import dayjs from 'dayjs';
+import timezone from 'dayjs/plugin/timezone';
+import utc from 'dayjs/plugin/utc';
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 export interface ClientContext {
   esNuevo: boolean;
@@ -50,7 +55,9 @@ export async function buildClientContext(tenantId: string, customerId: string): 
       servicioNombre: c.serviceName,
       fecha: c.scheduledAt,
       fechaDisplay: dateHelpers.formatDisplayDateNatural(c.scheduledAt, timezone),
-      horaDisplay: dateHelpers.formatTimeNatural(c.scheduledAt.toISOString().split('T')[1].substring(0, 5)),
+      horaDisplay: dateHelpers.formatTimeNatural(
+        dayjs(c.scheduledAt).tz(timezone).format('HH:mm:ss')
+      ),
       duracion: c.durationMinutes
     }));
   }

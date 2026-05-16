@@ -16,7 +16,7 @@ import { Modal } from "@/components/ui/modal";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-import { API_BASE } from "@/lib/api";
+import { API_BASE, dfetch, getTenantId } from "@/lib/api";
 const API = `${API_BASE}/api`;
 
 const NAV_SECTIONS = [
@@ -224,16 +224,19 @@ export default function SettingsPage() {
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch(`${API}/tenants`);
-        const tenants = await res.json();
-        if (!tenants.length) return;
-        const t = tenants[0];
-        setTenantId(t.id);
-        const cfgRes = await fetch(`${API}/tenant-config/${t.id}`);
+        const id = getTenantId();
+        if (!id) { setLoading(false); return; }
+        setTenantId(id);
+        const [cfgRes, tenantsRes] = await Promise.all([
+          dfetch(`${API}/tenant-config/${id}`),
+          dfetch(`${API}/tenants`),
+        ]);
         const cfg = await cfgRes.json();
+        const tenantsData = await tenantsRes.json();
+        const t = (Array.isArray(tenantsData) ? tenantsData[0] : tenantsData) || {};
         setSettings((s) => ({
           ...s,
-          name: cfg.name || t.name || "",
+          name: t.name || cfg.name || "",
           phone: cfg.business_info?.phone || "",
           address: cfg.business_info?.address || "",
           description: cfg.business_info?.description || "",
@@ -246,7 +249,7 @@ export default function SettingsPage() {
           wompiPrivateKey: cfg.wompi?.privateKey || "",
           ai_agentName: cfg.ai_config?.agentName || "",
           ai_model: t.ai_model || "gpt-4o-mini",
-          ai_temperature: t.ai_temperature ?? 0.7,
+          ai_temperature: t.ai_temperature != null ? Number(t.ai_temperature) : 0.7,
           ai_maxTokens: t.ai_max_tokens ?? 500,
           ai_tone: cfg.ai_config?.tone || "Semiformal",
           ai_historyMessages: cfg.ai_config?.historyMessages ?? 10,
@@ -273,8 +276,8 @@ export default function SettingsPage() {
     if (!tenantId) return;
     try {
       const [kRes, uRes] = await Promise.all([
-        fetch(`${API}/ai/knowledge/${tenantId}`).then((r) => r.json()),
-        fetch(`${API}/ai/unanswered/${tenantId}`).then((r) => r.json()),
+        dfetch(`${API}/ai/knowledge/${tenantId}`).then((r) => r.json()),
+        dfetch(`${API}/ai/unanswered/${tenantId}`).then((r) => r.json()),
       ]);
       setSettings((s) => ({ ...s, knowledge: Array.isArray(kRes) ? kRes : [], unanswered: Array.isArray(uRes) ? uRes : [] }));
     } catch {}
@@ -299,7 +302,7 @@ export default function SettingsPage() {
     if (!tenantId) return;
     setSaving(true);
     try {
-      await fetch(`${API}/tenants/${tenantId}`, {
+      await dfetch(`${API}/tenants/${tenantId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -310,7 +313,7 @@ export default function SettingsPage() {
           ai_max_tokens: settings.ai_maxTokens,
         }),
       });
-      await fetch(`${API}/tenant-config/${tenantId}`, {
+      await dfetch(`${API}/tenant-config/${tenantId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -366,13 +369,13 @@ export default function SettingsPage() {
         keywords: entryForm.keywords.split(",").map((k) => k.trim()).filter(Boolean),
       };
       if (editingEntry) {
-        await fetch(`${API}/ai/knowledge/${tenantId}/${editingEntry.id}`, {
+        await dfetch(`${API}/ai/knowledge/${tenantId}/${editingEntry.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
       } else {
-        await fetch(`${API}/ai/knowledge/${tenantId}`, {
+        await dfetch(`${API}/ai/knowledge/${tenantId}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -391,7 +394,7 @@ export default function SettingsPage() {
   const handleDeleteEntry = async (id: string) => {
     if (!tenantId) return;
     try {
-      await fetch(`${API}/ai/knowledge/${tenantId}/${id}`, { method: "DELETE" });
+      await dfetch(`${API}/ai/knowledge/${tenantId}/${id}`, { method: "DELETE" });
       toast.success("Entrada eliminada");
       loadKnowledge();
     } catch {
@@ -405,9 +408,7 @@ export default function SettingsPage() {
     setKnowledgeModal(true);
   };
 
-  const webhookUrl = tenantId
-    ? `https://api.wompi.co/webhooks/${tenantId}`
-    : "—";
+  const webhookUrl = `${API_BASE}/api/webhooks/wompi`;
 
   const copyWebhook = () => {
     navigator.clipboard.writeText(webhookUrl);
@@ -867,7 +868,10 @@ export default function SettingsPage() {
                     <Button size="sm" variant="ghost" onClick={() => handleResolveUnanswered(q)}>
                       Resolver
                     </Button>
-                    <Button size="sm" variant="ghost" onClick={() => {
+                    <Button size="sm" variant="ghost" onClick={async () => {
+                      try {
+                        await dfetch(`${API}/ai/unanswered/${q.id}/ignore`, { method: "POST" });
+                      } catch {}
                       setSettings((s) => ({ ...s, unanswered: s.unanswered.filter((u) => u.id !== q.id) }));
                       toast.success("Ignorada");
                     }}>

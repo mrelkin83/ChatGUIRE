@@ -37,6 +37,18 @@ export async function wompiWebhookHandler(request: FastifyRequest, reply: Fastif
 
   const orderId = transaction.payment_link_sku;
 
+  // Idempotency: check current payment status before processing
+  const [existingPayment] = await db
+    .select()
+    .from(payments)
+    .where(eq(payments.externalId, transaction.payment_link_id))
+    .limit(1);
+
+  if (existingPayment?.status === 'approved' && transaction.status === 'APPROVED') {
+    logger.info(`Wompi webhook: payment ${transaction.payment_link_id} already approved, skipping.`);
+    return reply.status(200).send({ status: 'already_processed' });
+  }
+
   if (transaction.status === 'APPROVED') {
     await db.update(payments)
       .set({ status: 'approved', updatedAt: new Date() })
@@ -57,9 +69,7 @@ export async function wompiWebhookHandler(request: FastifyRequest, reply: Fastif
 
         if (customer?.phone) {
           const instanceName = `tenant_${order.tenantId}`;
-          const channel = 'whatsapp';
-
-          await channelManager.sendMessage(order.tenantId, channel, instanceName, customer.phone, {
+          await channelManager.sendMessage(order.tenantId, 'whatsapp', instanceName, customer.phone, {
             type: 'text',
             text: `✅ *¡Pago Recibido!*\n\nTu pedido #${order.orderNumber} ha sido confirmado. Pronto recibirás información sobre el envío.\n\nGracias por tu compra.`,
           });
@@ -74,6 +84,24 @@ export async function wompiWebhookHandler(request: FastifyRequest, reply: Fastif
     await db.update(payments)
       .set({ status: 'declined', updatedAt: new Date() })
       .where(eq(payments.externalId, transaction.payment_link_id));
+
+    // Notify customer to retry
+    if (orderId) {
+      try {
+        const [order] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+        if (order) {
+          const [customer] = await db.select().from(customers).where(eq(customers.id, order.customerId)).limit(1);
+          if (customer?.phone) {
+            await channelManager.sendMessage(order.tenantId, 'whatsapp', `tenant_${order.tenantId}`, customer.phone, {
+              type: 'text',
+              text: `❌ Tu pago para el pedido #${order.orderNumber} fue rechazado. Puedes intentarlo de nuevo respondiendo "quiero pagar".`,
+            });
+          }
+        }
+      } catch (err: any) {
+        logger.error(`Failed to notify customer of declined payment: ${err.message}`);
+      }
+    }
 
     logger.warn(`Payment declined/error for transaction ${transaction.id}`);
   }

@@ -24,7 +24,7 @@ interface WAGroup {
   owner?: string;
 }
 
-import { API_BASE } from "@/lib/api";
+import { API_BASE, dfetch, getTenantId } from "@/lib/api";
 const API = `${API_BASE}/api`;
 
 export default function GroupsPage() {
@@ -41,42 +41,37 @@ export default function GroupsPage() {
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    fetch(`${API}/tenants`)
-      .then((r) => r.json())
-      .then((tenants) => {
-        if (Array.isArray(tenants) && tenants.length > 0) {
-          const id = tenants[0].id;
-          setTenantId(id);
-          return id;
-        }
-        throw new Error("No tenants");
-      })
-      .then(async (id) => {
+    const id = getTenantId();
+    if (id) {
+      setTenantId(id);
+      (async () => {
         try {
-          const healthRes = await fetch(`${API}/channels/whatsapp-waha/health`);
+          const healthRes = await dfetch(`${API}/channels/whatsapp-waha/health`);
           const healthData = await healthRes.json();
           if (healthData.available) {
             setWahaAvailable(true);
-            const groupsRes = await fetch(`${API}/channels/whatsapp-waha/groups/${id}`);
+            const groupsRes = await dfetch(`${API}/channels/whatsapp-waha/groups/${id}`);
             const groupsData = await groupsRes.json();
             setGroups(Array.isArray(groupsData) ? groupsData : []);
           }
-        } catch {}
-      })
-      .catch(() => {
-        toast.error("Error al conectar con el servidor");
-      })
-      .finally(() => setLoading(false));
+        } catch {
+          toast.error("Error al conectar con el servidor");
+        }
+        setLoading(false);
+      })();
+    } else {
+      setLoading(false);
+    }
   }, []);
 
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
-      const healthRes = await fetch(`${API}/channels/whatsapp-waha/health`);
+      const healthRes = await dfetch(`${API}/channels/whatsapp-waha/health`);
       const healthData = await healthRes.json();
       if (healthData.available) {
         setWahaAvailable(true);
-        const groupsRes = await fetch(`${API}/channels/whatsapp-waha/groups/${tenantId}`);
+        const groupsRes = await dfetch(`${API}/channels/whatsapp-waha/groups/${tenantId}`);
         const groupsData = await groupsRes.json();
         setGroups(Array.isArray(groupsData) ? groupsData : []);
         toast.success("Grupos actualizados");
@@ -95,7 +90,7 @@ export default function GroupsPage() {
     setSending(true);
     setSent(false);
     try {
-      const res = await fetch(`${API}/channels/whatsapp-waha/groups/send`, {
+      const res = await dfetch(`${API}/channels/whatsapp-waha/groups/send`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

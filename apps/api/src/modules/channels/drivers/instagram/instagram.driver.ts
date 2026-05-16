@@ -8,8 +8,15 @@ export class InstagramDriver implements IChannelDriver {
   channel: ChannelType = 'instagram';
   private bridgeUrl: string;
 
+  private bridgeSecret: string;
+
   constructor() {
     this.bridgeUrl = process.env.INSTAGRAM_BRIDGE_URL || 'http://localhost:8000';
+    this.bridgeSecret = process.env.BRIDGE_SECRET || '';
+  }
+
+  private get authHeaders() {
+    return { 'x-bridge-secret': this.bridgeSecret };
   }
 
   async connect(config: ChannelDriverConfig): Promise<void> {
@@ -18,7 +25,7 @@ export class InstagramDriver implements IChannelDriver {
       username: config.externalId,
       password: config.config.password,
       proxy: config.config.proxy,
-    });
+    }, { headers: this.authHeaders });
   }
 
   async disconnect(tenantId: string, externalId: string): Promise<void> {
@@ -29,7 +36,7 @@ export class InstagramDriver implements IChannelDriver {
   async getStatus(tenantId: string, externalId: string): Promise<'connected' | 'disconnected' | 'connecting' | 'error'> {
     try {
       // Check if we can get directs as a way to verify connection
-      await axios.get(`${this.bridgeUrl}/get_directs/${externalId}`);
+      await axios.get(`${this.bridgeUrl}/get_directs/${externalId}`, { headers: this.authHeaders });
       return 'connected';
     } catch {
       return 'disconnected';
@@ -41,13 +48,13 @@ export class InstagramDriver implements IChannelDriver {
       username: externalId,
       thread_id: to,
       text: message.text,
-    });
+    }, { headers: this.authHeaders });
     return data.message_id || uuidv4();
   }
 
   async poll(tenantId: string, externalId: string): Promise<NormalizedMessage[]> {
     try {
-      const { data } = await axios.get(`${this.bridgeUrl}/get_directs/${externalId}`);
+      const { data } = await axios.get(`${this.bridgeUrl}/get_directs/${externalId}`, { headers: this.authHeaders });
       const normalized: NormalizedMessage[] = [];
 
       for (const thread of data.threads) {

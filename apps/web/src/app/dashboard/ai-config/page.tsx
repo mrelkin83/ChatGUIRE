@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { API_BASE } from "@/lib/api";
+import { API_BASE, dfetch, getTenantId } from "@/lib/api";
 import { Save, BrainCircuit, BookOpen, AlertTriangle, Trash2, Plus, X, Loader2, Pencil } from "lucide-react";
 
 interface KnowledgeEntry {
@@ -32,36 +32,33 @@ export default function AIConfigPage() {
   const [resolveAnswer, setResolveAnswer] = useState("");
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/tenants`)
-      .then((r) => r.json())
-      .then((tenants) => {
-        if (tenants.length > 0) {
-          const id = tenants[0].id;
-          setTenantId(id);
-          return Promise.all([
-            fetch(`${API_BASE}/api/ai/config/${id}`).then((r) => r.json()),
-            fetch(`${API_BASE}/api/ai/knowledge/${id}`).then((r) => r.json()),
-            fetch(`${API_BASE}/api/ai/unanswered/${id}`).then((r) => r.json()),
-          ]);
-        }
-        throw new Error("No tenants");
-      })
-      .then(([configRes, kbRes, unRes]) => {
-        setSystemPrompt(configRes.systemPrompt || "");
-        setModel(configRes.model || "gpt-4o-mini");
-        setTemperature(configRes.temperature || 0.7);
-        setKnowledge(Array.isArray(kbRes) ? kbRes : []);
-        setUnanswered(Array.isArray(unRes) ? unRes : []);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    const id = getTenantId();
+    if (id) {
+      setTenantId(id);
+      Promise.all([
+        dfetch(`${API_BASE}/api/ai/config/${id}`).then((r) => r.json()),
+        dfetch(`${API_BASE}/api/ai/knowledge/${id}`).then((r) => r.json()),
+        dfetch(`${API_BASE}/api/ai/unanswered/${id}`).then((r) => r.json()),
+      ])
+        .then(([configRes, kbRes, unRes]) => {
+          setSystemPrompt(configRes.systemPrompt || "");
+          setModel(configRes.model || "gpt-4o-mini");
+          setTemperature(configRes.temperature || 0.7);
+          setKnowledge(Array.isArray(kbRes) ? kbRes : []);
+          setUnanswered(Array.isArray(unRes) ? unRes : []);
+        })
+        .catch(() => {})
+        .finally(() => setLoading(false));
+    } else {
+      setLoading(false);
+    }
   }, []);
 
   const handleSave = async () => {
     setSaving(true);
     setSaved(false);
     try {
-      await fetch(`${API_BASE}/api/ai/config/${tenantId}`, {
+      await dfetch(`${API_BASE}/api/ai/config/${tenantId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ model, temperature, maxTokens: 500 }),
@@ -98,7 +95,7 @@ export default function AIConfigPage() {
     setAddingEntry(true);
     try {
       if (editingEntry) {
-        const res = await fetch(`${API_BASE}/api/ai/knowledge/${tenantId}/${editingEntry.id}`, {
+        const res = await dfetch(`${API_BASE}/api/ai/knowledge/${tenantId}/${editingEntry.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ question: newQuestion, answer: newAnswer, category: newCategory }),
@@ -107,7 +104,7 @@ export default function AIConfigPage() {
           setKnowledge(knowledge.map((k) => k.id === editingEntry.id ? { ...k, question: newQuestion, answer: newAnswer, category: newCategory } : k));
         }
       } else {
-        const res = await fetch(`${API_BASE}/api/ai/knowledge/${tenantId}`, {
+        const res = await dfetch(`${API_BASE}/api/ai/knowledge/${tenantId}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ question: newQuestion, answer: newAnswer, category: newCategory }),
@@ -128,7 +125,7 @@ export default function AIConfigPage() {
 
   const handleDeleteKnowledge = async (id: string) => {
     try {
-      await fetch(`${API_BASE}/api/ai/knowledge/${tenantId}/${id}`, { method: "DELETE" });
+      await dfetch(`${API_BASE}/api/ai/knowledge/${tenantId}/${id}`, { method: "DELETE" });
       setKnowledge(knowledge.filter((k) => k.id !== id));
     } catch {}
   };
@@ -136,7 +133,7 @@ export default function AIConfigPage() {
   const handleResolveUnanswered = async (id: string) => {
     if (!resolveAnswer) return;
     try {
-      const res = await fetch(`${API_BASE}/api/ai/unanswered/${id}/resolve`, {
+      const res = await dfetch(`${API_BASE}/api/ai/unanswered/${id}/resolve`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ answer: resolveAnswer }),
@@ -145,7 +142,7 @@ export default function AIConfigPage() {
         setUnanswered(unanswered.filter((u) => u.id !== id));
         setResolvingId(null);
         setResolveAnswer("");
-        fetch(`${API_BASE}/api/ai/knowledge/${tenantId}`)
+        dfetch(`${API_BASE}/api/ai/knowledge/${tenantId}`)
           .then((r) => r.json())
           .then((kb) => { if (Array.isArray(kb)) setKnowledge(kb); });
       }
@@ -154,7 +151,7 @@ export default function AIConfigPage() {
 
   const handleIgnoreUnanswered = async (id: string) => {
     try {
-      await fetch(`${API_BASE}/api/ai/unanswered/${id}/ignore`, { method: "POST" });
+      await dfetch(`${API_BASE}/api/ai/unanswered/${id}/ignore`, { method: "POST" });
       setUnanswered(unanswered.filter((u) => u.id !== id));
     } catch {}
   };

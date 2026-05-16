@@ -2,6 +2,11 @@ import { db, appointments, products, tenantConfig } from '@saas/db';
 import { eq, and, between } from 'drizzle-orm';
 import { dateHelpers } from '@saas/shared';
 import dayjs from 'dayjs';
+import timezone from 'dayjs/plugin/timezone';
+import utc from 'dayjs/plugin/utc';
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 export interface GetSlotsParams {
   tenantId: string;
@@ -49,9 +54,9 @@ export async function getAvailableSlots(params: GetSlotsParams): Promise<Slot[]>
   const openTime = daySchedule.open || '08:00:00';
   const closeTime = daySchedule.close || '18:00:00';
 
-  // 3. Load appointments for that day
-  const startOfDay = new Date(`${fecha}T00:00:00`);
-  const endOfDay = new Date(`${fecha}T23:59:59`);
+  // 3. Load appointments for that day (boundaries in tenant timezone)
+  const startOfDay = dayjs.tz(`${fecha}T00:00:00`, timezone).toDate();
+  const endOfDay = dayjs.tz(`${fecha}T23:59:59`, timezone).toDate();
 
   const dayAppointments = await db
     .select()
@@ -64,10 +69,10 @@ export async function getAvailableSlots(params: GetSlotsParams): Promise<Slot[]>
       )
     );
 
-  // 4. Generate slots
+  // 4. Generate slots — interpret open/close times in tenant timezone
   const slots: Slot[] = [];
-  let current = dayjs(`${fecha}T${openTime}`).tz(timezone);
-  const end = dayjs(`${fecha}T${closeTime}`).tz(timezone);
+  let current = dayjs.tz(`${fecha}T${openTime}`, timezone);
+  const end = dayjs.tz(`${fecha}T${closeTime}`, timezone);
 
   while (current.isBefore(end)) {
     const hora = current.format('HH:mm:ss');

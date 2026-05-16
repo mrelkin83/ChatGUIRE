@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { API_BASE } from "@/lib/api";
+import { API_BASE, dfetch, getTenantId } from "@/lib/api";
 import { 
   Plus, MoreHorizontal, MessageSquare, Phone, User, Calendar,
   ChevronDown, Filter, Search, Loader2, X, GripVertical
@@ -42,32 +42,29 @@ export default function KanbanPage() {
   const [draggedConv, setDraggedConv] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/tenants`)
-      .then((r) => r.json())
-      .then((tenants) => {
-        if (tenants.length > 0) {
-          const id = tenants[0].id;
-          setTenantId(id);
-          return Promise.all([
-            fetch(`${API_BASE}/api/kanban/columns/${id}`).then((r) => r.json()),
-            fetch(`${API_BASE}/api/kanban/conversations/${id}`).then((r) => r.json()),
-          ]);
-        }
-        throw new Error("No tenants");
-      })
-      .then(([colsData, convsData]) => {
-        setColumns(Array.isArray(colsData) ? colsData : []);
-        setConversations(Array.isArray(convsData) ? convsData : []);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    const id = getTenantId();
+    if (id) {
+      setTenantId(id);
+      Promise.all([
+        dfetch(`${API_BASE}/api/kanban/columns/${id}`).then((r) => r.json()),
+        dfetch(`${API_BASE}/api/kanban/conversations/${id}`).then((r) => r.json()),
+      ])
+        .then(([colsData, convsData]) => {
+          setColumns(Array.isArray(colsData) ? colsData : []);
+          setConversations(Array.isArray(convsData) ? convsData : []);
+        })
+        .catch(() => {})
+        .finally(() => setLoading(false));
+    } else {
+      setLoading(false);
+    }
   }, []);
 
   const handleCreateColumn = async () => {
     if (!newColName) return;
     setSaving(true);
     try {
-      const res = await fetch(`${API_BASE}/api/kanban/columns`, {
+      const res = await dfetch(`${API_BASE}/api/kanban/columns`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -88,7 +85,7 @@ export default function KanbanPage() {
 
   const handleDeleteColumn = async (id: string) => {
     try {
-      await fetch(`${API_BASE}/api/kanban/columns/${id}`, { method: "DELETE" });
+      await dfetch(`${API_BASE}/api/kanban/columns/${id}`, { method: "DELETE" });
       setColumns(columns.filter((c) => c.id !== id));
       // Move conversations from deleted column to unassigned
       setConversations(conversations.map(c => 
@@ -109,7 +106,7 @@ export default function KanbanPage() {
     if (!draggedConv) return;
     
     try {
-      await fetch(`${API_BASE}/api/kanban/conversations/${draggedConv}/move`, {
+      await dfetch(`${API_BASE}/api/kanban/conversations/${draggedConv}/move`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ columnId }),

@@ -9,8 +9,9 @@ import {
   SmartphoneIcon,
 } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
+import { API_BASE, dfetch, getTenantId } from "@/lib/api";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+const API = API_BASE;
 
 const staggerContainer = {
   hidden: { opacity: 0 },
@@ -100,8 +101,10 @@ export default function ChannelsPage() {
   const [igPassword, setIgPassword] = useState("");
   const [igTwoFA, setIgTwoFA] = useState("");
 
-  const [fbAppState, setFbAppState] = useState("");
+  const [fbPageId, setFbPageId] = useState("");
+  const [fbAccessToken, setFbAccessToken] = useState("");
 
+  const [ttUsername, setTtUsername] = useState("");
   const [ttCookies, setTtCookies] = useState("");
 
   const stopPolling = useCallback(() => {
@@ -113,25 +116,20 @@ export default function ChannelsPage() {
   }, []);
 
   useEffect(() => {
-    fetch(`${API}/api/tenants`)
-      .then((r) => r.json())
-      .then((tenants) => {
-        if (tenants.length > 0) {
-          const id = tenants[0].id;
-          setTenantId(id);
-          loadStatuses(id);
-        } else {
-          setLoading(false);
-        }
-      })
-      .catch(() => setLoading(false));
+    const id = getTenantId();
+    if (id) {
+      setTenantId(id);
+      loadStatuses(id);
+    } else {
+      setLoading(false);
+    }
     return () => stopPolling();
   }, [stopPolling]);
 
   const fetchWithTimeout = (url: string, options?: RequestInit, timeout = 5000) => {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeout);
-    return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(timer));
+    return dfetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(timer));
   };
 
   const loadStatuses = async (id: string) => {
@@ -165,7 +163,7 @@ export default function ChannelsPage() {
       pollRef.current = setInterval(async () => {
         attempts++;
         try {
-          const statusRes = await fetch(`${API}/api/channels/whatsapp/status/${tid}`);
+          const statusRes = await dfetch(`${API}/api/channels/whatsapp/status/${tid}`);
           const statusData = await statusRes.json();
 
           if (statusData.status === "connected" || statusData.status === "open") {
@@ -181,7 +179,7 @@ export default function ChannelsPage() {
 
           if (attempts % 3 === 0) {
             try {
-              const qrRes = await fetch(`${API}/api/channels/whatsapp/qr/${tid}`);
+              const qrRes = await dfetch(`${API}/api/channels/whatsapp/qr/${tid}`);
               const qrData = await qrRes.json();
               if (qrData.qr && qrData.qr !== qrCode) {
                 setQrCode(qrData.qr);
@@ -207,7 +205,7 @@ export default function ChannelsPage() {
       setQrCode(null);
       setQrStep(0);
       try {
-        await fetch(`${API}/api/channels/whatsapp/connect`, {
+        await dfetch(`${API}/api/channels/whatsapp/connect`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ tenantId }),
@@ -218,7 +216,7 @@ export default function ChannelsPage() {
         await new Promise((r) => setTimeout(r, 2000));
 
         try {
-          const qrRes = await fetch(`${API}/api/channels/whatsapp/qr/${tenantId}`);
+          const qrRes = await dfetch(`${API}/api/channels/whatsapp/qr/${tenantId}`);
           const qrData = await qrRes.json();
           if (qrData.qr) {
             setQrCode(qrData.qr);
@@ -240,7 +238,7 @@ export default function ChannelsPage() {
     const ch = channels.find((c) => c.id === channelId);
     if (!ch?.disconnectEndpoint) return;
     try {
-      await fetch(`${API}${ch.disconnectEndpoint}`, {
+      await dfetch(`${API}${ch.disconnectEndpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tenantId }),
@@ -261,7 +259,7 @@ export default function ChannelsPage() {
     if (!igUsername || !igPassword) return;
     setConnecting(true);
     try {
-      const res = await fetch(`${API}/api/channels/instagram/connect`, {
+      const res = await dfetch(`${API}/api/channels/instagram/connect`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tenantId, username: igUsername, password: igPassword, twoFACode: igTwoFA }),
@@ -275,13 +273,13 @@ export default function ChannelsPage() {
   };
 
   const handleFacebookConnect = async () => {
-    if (!fbAppState) return;
+    if (!fbPageId || !fbAccessToken) return;
     setConnecting(true);
     try {
-      const res = await fetch(`${API}/api/channels/facebook/connect`, {
+      const res = await dfetch(`${API}/api/channels/facebook/connect`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tenantId, appState: fbAppState }),
+        body: JSON.stringify({ tenantId, pageId: fbPageId, accessToken: fbAccessToken }),
       });
       if (res.ok) {
         closeModal();
@@ -292,13 +290,13 @@ export default function ChannelsPage() {
   };
 
   const handleTikTokConnect = async () => {
-    if (!ttCookies) return;
+    if (!ttUsername || !ttCookies) return;
     setConnecting(true);
     try {
-      const res = await fetch(`${API}/api/channels/tiktok/connect`, {
+      const res = await dfetch(`${API}/api/channels/tiktok/connect`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tenantId, sessionCookies: ttCookies }),
+        body: JSON.stringify({ tenantId, username: ttUsername, sessionCookies: ttCookies }),
       });
       if (res.ok) {
         closeModal();
@@ -705,23 +703,32 @@ export default function ChannelsPage() {
               <div className="space-y-4">
                 <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface-1)] p-4">
                   <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
-                    Para conectar Facebook Messenger, necesitas obtener el appState JSON de tu sesión.
-                    Puedes obtenerlo usando herramientas de automatización como Facebook State Extractor.
+                    Conecta tu página de Facebook con la API de Meta. Necesitas el ID de la página y el token de acceso de página permanente.
                   </p>
                 </div>
                 <div className="form-group">
-                  <label className="form-label">AppState JSON</label>
-                  <textarea
-                    value={fbAppState}
-                    onChange={(e) => setFbAppState(e.target.value)}
-                    placeholder='{"cookies": [...], "localStorage": {...}}'
-                    rows={5}
-                    className="input-field resize-none font-[var(--font-mono)] text-xs"
+                  <label className="form-label">Page ID</label>
+                  <input
+                    type="text"
+                    value={fbPageId}
+                    onChange={(e) => setFbPageId(e.target.value)}
+                    placeholder="123456789012345"
+                    className="input-field"
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Access Token de Página</label>
+                  <input
+                    type="password"
+                    value={fbAccessToken}
+                    onChange={(e) => setFbAccessToken(e.target.value)}
+                    placeholder="EAAxxxxxxxx..."
+                    className="input-field"
                   />
                 </div>
                 <button
                   onClick={handleFacebookConnect}
-                  disabled={connecting || !fbAppState}
+                  disabled={connecting || !fbPageId || !fbAccessToken}
                   className="w-full rounded-xl py-2.5 text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50"
                   style={{ background: "linear-gradient(135deg, #1877F2, #1565C0)" }}
                 >
@@ -769,6 +776,16 @@ export default function ChannelsPage() {
                   </p>
                 </div>
                 <div className="form-group">
+                  <label className="form-label">Usuario TikTok</label>
+                  <input
+                    type="text"
+                    value={ttUsername}
+                    onChange={(e) => setTtUsername(e.target.value)}
+                    placeholder="@miusuario"
+                    className="input-field"
+                  />
+                </div>
+                <div className="form-group">
                   <label className="form-label">Cookies de sesión</label>
                   <textarea
                     value={ttCookies}
@@ -780,7 +797,7 @@ export default function ChannelsPage() {
                 </div>
                 <button
                   onClick={handleTikTokConnect}
-                  disabled={connecting || !ttCookies}
+                  disabled={connecting || !ttUsername || !ttCookies}
                   className="w-full rounded-xl py-2.5 text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50"
                   style={{ background: "linear-gradient(135deg, #25F4EE, #FE2C55)" }}
                 >

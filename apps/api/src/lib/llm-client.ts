@@ -72,8 +72,27 @@ export class LLMClient {
   }
 
   async chat(input: LLMChatInput): Promise<string> {
-    const provider = this._currentProvider;
-    const config = this._tenantConfig;
+    // Load tenant config per-request to avoid shared-state race conditions
+    let provider = this._currentProvider;
+    let config: IntegrationConfig | null = null;
+    if (input.tenantId) {
+      try {
+        const { db, integrations } = require('@saas/db');
+        const { eq, and } = require('drizzle-orm');
+        const [primary] = await db.select().from(integrations)
+          .where(and(
+            eq(integrations.tenantId, input.tenantId),
+            eq(integrations.category, 'llm'),
+            eq(integrations.isActive, true),
+            eq(integrations.isPrimary, true)
+          ))
+          .limit(1);
+        if (primary) {
+          provider = primary.provider;
+          config = { provider: primary.provider, config: primary.config as Record<string, string> };
+        }
+      } catch {}
+    }
 
     try {
       switch (provider) {
@@ -90,6 +109,18 @@ export class LLMClient {
       }
     } catch (err: any) {
       logger.error(`LLM error (${provider}): ${err.message}`);
+
+      // Fallback to OpenAI global default if primary provider is not already OpenAI
+      if (provider !== 'openai') {
+        logger.warn(`Falling back to OpenAI after ${provider} failure`);
+        try {
+          return await this.chatOpenAI(input, null);
+        } catch (fallbackErr: any) {
+          logger.error(`LLM fallback (openai) also failed: ${fallbackErr.message}`);
+          throw fallbackErr;
+        }
+      }
+
       throw err;
     }
   }

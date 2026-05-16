@@ -37,7 +37,7 @@ import { Tabs } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { formatDate, formatRelativeTime } from "@/lib/utils";
 
-import { API_BASE } from "@/lib/api";
+import { API_BASE, dfetch, getTenantId } from "@/lib/api";
 const API = API_BASE;
 
 type DeliveryStatus = "pending" | "assigned" | "in_transit" | "delivered" | "cancelled";
@@ -217,22 +217,21 @@ export default function DeliveriesPage() {
 
   useEffect(() => {
     let mounted = true;
-    (async () => {
-      try {
-        const tenantsRes = await fetch(`${API}/api/tenants`);
-        const tenants = await tenantsRes.json();
-        if (tenants.length > 0 && mounted) {
-          try {
-            const deliveriesRes = await fetch(`${API}/api/deliveries/${tenants[0].id}`);
-            const data = await deliveriesRes.json();
-            if (Array.isArray(data) && data.length > 0) {
-              setDeliveries(data);
-            }
-          } catch {}
-        }
-      } catch {}
-      if (mounted) setLoading(false);
-    })();
+    const id = getTenantId();
+    if (id) {
+      (async () => {
+        try {
+          const deliveriesRes = await dfetch(`${API}/api/deliveries/${id}`);
+          const data = await deliveriesRes.json();
+          if (Array.isArray(data) && data.length > 0 && mounted) {
+            setDeliveries(data);
+          }
+        } catch {}
+        if (mounted) setLoading(false);
+      })();
+    } else {
+      setLoading(false);
+    }
     return () => { mounted = false; };
   }, []);
 

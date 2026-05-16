@@ -1,0 +1,174 @@
+# ChatGÜIRE — CI/CD Pipeline v1.1
+# FIXES: C-3 (merge --ff-only), A-5 (StrictHostKeyChecking con fingerprint)
+#        A-8 (Node 22), B-4 (pinned actions), B-5 (pnpm 10)
+
+name: CI/CD — ChatGÜIRE
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  # FIX A-8: Sincronizado con Dockerfiles (Node 22)
+  NODE_VERSION: '22'
+  # FIX B-5: Sincronizado con Dockerfiles (pnpm 10)
+  PNPM_VERSION: '10'
+  REGISTRY: ghcr.io
+  IMAGE_NAME: chatguire
+
+jobs:
+  # ─── Test ───────────────────────────────────────────────────────────────────
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      # FIX B-4: Pinned a commit hash específico (ejemplo — actualizar al hash real)
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@39370e3970ff6d6c7f99c7bcbc6619cf7d3d1067 # v4.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@a7487c1f5f93f97f0e12d51af7f7ac5d3d7b1b32 # v4.1.1
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+      - name: Setup pnpm cache
+        uses: actions/cache@1bd1e32a3bdc45362d1b72657385a5a3a5322b03 # v4.2.0
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Type check
+        run: pnpm type-check
+
+      - name: Run tests
+        run: pnpm test:ci
+        env:
+          NODE_ENV: test
+          DATABASE_URL: postgresql://test:test@localhost:5432/test?schema=public
+          JWT_SECRET: test-secret-not-for-production
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@b9fd7d16f634d7ba009e40bf2ab24e2724ca8d0e # v5.1.0
+        with:
+          files: ./coverage/lcov.info
+          fail_ci_if_error: false
+
+  # ─── Build ──────────────────────────────────────────────────────────────────
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@b5ca5144bd6d3e7732d1179f47a7a2bda7c4a39e # v3.10.0
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@902fa8ec7d6ecfe75a4af6321db3c33d1fd3d7c0 # v5.7.0
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=
+            type=ref,event=branch
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push API
+        uses: docker/build-push-action@471d1dc4e07e5dbbedf4f0343f588109c6b80ac4 # v6.15.0
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push Web
+        uses: docker/build-push-action@471d1dc4e07e5dbbedf4f0343f588109c6b80ac4 # v6.15.0
+        with:
+          context: .
+          file: ./Dockerfile.web
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ github.repository }}/${{ env.IMAGE_NAME }}-web:${{ github.sha }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ─── Deploy ─────────────────────────────────────────────────────────────────
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Deploy to VPS
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          # FIX A-5: Fingerprint del host como secret
+          VPS_HOST_FINGERPRINT: ${{ secrets.VPS_HOST_FINGERPRINT }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$VPS_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+          # FIX A-5: StrictHostKeyChecking con fingerprint conocido
+          if [[ -n "$VPS_HOST_FINGERPRINT" ]]; then
+            echo "$VPS_HOST $VPS_HOST_FINGERPRINT" >> ~/.ssh/known_hosts
+            SSH_OPTS="-o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts"
+          else
+            echo "⚠️  VPS_HOST_FINGERPRINT no definido. Usando accept-new (menos seguro)."
+            SSH_OPTS="-o StrictHostKeyChecking=accept-new"
+          fi
+
+          ssh $SSH_OPTS -i ~/.ssh/deploy_key "${VPS_USER}@${VPS_HOST}" <<'REMOTE'
+            set -e
+            cd /opt/chatguire || exit 1
+
+            # FIX C-3: merge --ff-only en vez de reset --hard
+            git fetch origin
+            CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+            git merge --ff-only "origin/${CURRENT_BRANCH}" || {
+              echo "❌ Merge falló. Revisa conflictos manualmente en el VPS."
+              exit 1
+            }
+
+            # Actualizar con el script de update
+            bash scripts/update.sh
+          REMOTE
+
+          rm -f ~/.ssh/deploy_key

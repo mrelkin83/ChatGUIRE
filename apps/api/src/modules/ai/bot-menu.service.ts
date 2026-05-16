@@ -125,6 +125,7 @@ export async function tryBotMenu(
           tenantId,
           conversationId,
           direction: 'outbound',
+          senderType: 'system',
           content: { type: 'text', text } as any,
         });
       }
@@ -146,6 +147,7 @@ export async function tryBotMenu(
           tenantId,
           conversationId,
           direction: 'outbound',
+          senderType: 'system',
           content: { type: 'text', text } as any,
         });
       }
@@ -180,6 +182,7 @@ export async function tryBotMenu(
           tenantId,
           conversationId,
           direction: 'outbound',
+          senderType: 'system',
           content: { type: 'text', text } as any,
         });
       }

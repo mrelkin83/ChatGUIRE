@@ -4,6 +4,12 @@ import { eq, and, desc } from 'drizzle-orm';
 import { channelManager } from '../../channels/core/channel-manager';
 import { dateHelpers } from '@saas/shared';
 import { logger } from '../../../lib/logger';
+import { getAvailableSlots } from '../scheduling/scheduling.engine';
+import dayjs from 'dayjs';
+import timezone from 'dayjs/plugin/timezone';
+import utc from 'dayjs/plugin/utc';
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 export async function processReagendarCita(params: ActionProcessorInput): Promise<void> {
   const { tenantId, customerPhone, channel, customerId, accion } = params;
@@ -51,11 +57,47 @@ export async function processReagendarCita(params: ActionProcessorInput): Promis
     return;
   }
 
-  const newDate = new Date(`${accion.fecha}T${accion.horaInicio}`);
+  // Check slot availability before rescheduling
+  const slots = await getAvailableSlots({
+    tenantId,
+    servicioId: appointment.serviceId,
+    fecha: accion.fecha,
+    timezone: params.timezone,
+  });
+  const requestedHora = accion.horaInicio.substring(0, 5);
+  const slotAvailable = slots.some(s => s.hora.substring(0, 5) === requestedHora && s.disponible);
 
-  await db.update(appointments)
+  if (!slotAvailable) {
+    const availableList = slots
+      .filter(s => s.disponible)
+      .slice(0, 5)
+      .map(s => s.hora.substring(0, 5))
+      .join(', ');
+    await channelManager.sendMessage(tenantId, channel as any, instanceName, customerPhone, {
+      type: 'text',
+      text: `Lo siento, el horario ${requestedHora} no está disponible para el ${accion.fecha}. ${availableList ? `Horarios disponibles: ${availableList}` : 'No hay horarios disponibles ese día.'} ¿Te funciona otro horario?`,
+    });
+    return;
+  }
+
+  const newDate = dayjs.tz(`${accion.fecha}T${accion.horaInicio}`, params.timezone).toDate();
+
+  const [rescheduled] = await db.update(appointments)
     .set({ scheduledAt: newDate, updatedAt: new Date() })
-    .where(eq(appointments.id, appointment.id));
+    .where(and(
+      eq(appointments.id, appointment.id),
+      eq(appointments.tenantId, tenantId),
+      eq(appointments.customerId, customerId),
+    ))
+    .returning({ id: appointments.id });
+
+  if (!rescheduled) {
+    await channelManager.sendMessage(tenantId, channel as any, instanceName, customerPhone, {
+      type: 'text',
+      text: `No tienes permiso para reagendar esa cita o ya no existe.`,
+    });
+    return;
+  }
 
   const nuevaFecha = dateHelpers.formatDisplayDateNatural(newDate, params.timezone);
   const nuevaHora = dateHelpers.formatTimeNatural(accion.horaInicio);

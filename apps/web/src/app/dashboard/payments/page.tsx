@@ -27,7 +27,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { formatCOP, formatDate } from "@/lib/utils";
 
-import { API_BASE } from "@/lib/api";
+import { API_BASE, dfetch, getTenantId } from "@/lib/api";
 const API = API_BASE;
 
 interface TransactionRecord {
@@ -131,22 +131,18 @@ export default function PaymentsPage() {
   const [isConfigured, setIsConfigured] = useState(false);
   const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
 
-  const webhookUrl = tenantId
-    ? `${window.location.origin}/api/webhooks/wompi/${tenantId}`
-    : "https://app.chatuire.com/api/webhooks/wompi/tu-id";
+  const webhookUrl = `${API_BASE}/api/webhooks/wompi`;
 
   useEffect(() => {
     let mounted = true;
     (async () => {
       try {
-        const tenantsRes = await fetch(`${API}/api/tenants`);
-        const tenants = await tenantsRes.json();
-        if (tenants.length > 0 && mounted) {
-          const id = tenants[0].id;
+        const id = getTenantId();
+        if (id && mounted) {
           setTenantId(id);
 
           try {
-            const configRes = await fetch(`${API}/api/tenants/${id}/config`);
+            const configRes = await dfetch(`${API}/api/tenants/${id}/config`);
             const config = await configRes.json();
             if (config) {
               if (config.wompi_public_key) setPublicKey(config.wompi_public_key);
@@ -157,7 +153,7 @@ export default function PaymentsPage() {
           } catch {}
 
           try {
-            const trxRes = await fetch(`${API}/api/transactions/${id}`);
+            const trxRes = await dfetch(`${API}/api/transactions/${id}`);
             const trxData = await trxRes.json();
             if (Array.isArray(trxData) && trxData.length > 0) {
               setTransactions(trxData);
@@ -181,7 +177,7 @@ export default function PaymentsPage() {
     }
     setSaving(true);
     try {
-      const res = await fetch(`${API}/api/tenants/${tenantId}/config`, {
+      const res = await dfetch(`${API}/api/tenants/${tenantId}/config`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

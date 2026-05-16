@@ -12,3 +12,4 @@ export * from './campaigns';
 export * from './integrations';
 export * from './superadmin';
 export * from './bot-menus';
+export * from './quotes-reservations';

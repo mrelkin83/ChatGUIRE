@@ -35,9 +35,22 @@ export async function processCancelarCita(params: ActionProcessorInput): Promise
     return;
   }
 
-  await db.update(appointments)
+  const [cancelled] = await db.update(appointments)
     .set({ status: 'cancelled', updatedAt: new Date() })
-    .where(eq(appointments.id, appointmentId));
+    .where(and(
+      eq(appointments.id, appointmentId),
+      eq(appointments.tenantId, tenantId),
+      eq(appointments.customerId, params.customerId),
+    ))
+    .returning({ id: appointments.id });
+
+  if (!cancelled) {
+    await channelManager.sendMessage(tenantId, channel as any, instanceName, customerPhone, {
+      type: 'text',
+      text: `No tienes permiso para cancelar esa cita o ya no existe.`,
+    });
+    return;
+  }
 
   await channelManager.sendMessage(tenantId, channel as any, instanceName, customerPhone, {
     type: 'text',

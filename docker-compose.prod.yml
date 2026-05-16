@@ -1,0 +1,220 @@
+# ChatGÜIRE — Docker Compose Producción v1.1
+# FIXES: C-6 (sin fallback changeme), A-3 (mem_limit), A-4 (versiones pinedas)
+#        M-9 (rotación logs), B-1 (version eliminada), A-2 (redis password)
+
+services:
+  # ─── API Principal ──────────────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - NODE_ENV=production
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./uploads:/app/uploads:rw
+      - ./logs:/app/logs:rw
+    # FIX A-3: mem_limit funciona en Docker Compose standalone (deploy.resources no)
+    mem_limit: 1g
+    memswap_limit: 1g
+    cpus: '1.5'
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+    # FIX M-9: Rotación de logs
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+        labels: "service_name"
+        env: "OS_VERSION"
+    networks:
+      - chatguire-network
+
+  # ─── Frontend ─────────────────────────────────────────────────────────────
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+      target: production
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "127.0.0.1:3001:3001"
+    depends_on:
+      - api
+    mem_limit: 512m
+    memswap_limit: 512m
+    cpus: '0.5'
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:3001"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
+    networks:
+      - chatguire-network
+
+  # ─── PostgreSQL + pgvector ─────────────────────────────────────────────────
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./backups:/backups:rw
+    mem_limit: 1g
+    memswap_limit: 1g
+    cpus: '1.0'
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "30m"
+        max-file: "5"
+    networks:
+      - chatguire-network
+
+  # ─── Redis ────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # FIX A-2: Redis con contraseña
+    command: redis-server --requirepass ${REDIS_PASSWORD} --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    env_file: .env
+    volumes:
+      - redis-data:/data
+    mem_limit: 384m
+    memswap_limit: 384m
+    cpus: '0.25'
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - chatguire-network
+
+  # ─── WAHA (WhatsApp) ──────────────────────────────────────────────────────
+  waha:
+    # FIX A-4: Versión pineada (cambiar a la versión que uses)
+    image: devlikeapro/waha:2025.1.15
+    restart: unless-stopped
+    environment:
+      - WAHA_ENVIRONMENT=production
+    volumes:
+      - waha-data:/app/data
+    mem_limit: 1.5g
+    memswap_limit: 1.5g
+    cpus: '1.0'
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+    networks:
+      - chatguire-network
+
+  # ─── Evolution API (WhatsApp alternativo) ─────────────────────────────────
+  evolution-api:
+    # FIX A-4: Versión pineada (cambiar a la versión que uses)
+    image: atendai/evolution-api:v2.1.1
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - SERVER_URL=https://${DOMAIN}
+      - AUTHENTICATION_API_KEY=${JWT_SECRET}
+    volumes:
+      - evolution-data:/app/data
+    mem_limit: 1g
+    memswap_limit: 1g
+    cpus: '0.75'
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+    networks:
+      - chatguire-network
+
+  # ─── Instagram Bridge (opcional) ──────────────────────────────────────────
+  instagram-bridge:
+    build:
+      context: ./services/instagram
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    mem_limit: 512m
+    memswap_limit: 512m
+    cpus: '0.5'
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
+    networks:
+      - chatguire-network
+
+volumes:
+  postgres-data:
+  redis-data:
+  waha-data:
+  evolution-data:
+
+networks:
+  chatguire-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

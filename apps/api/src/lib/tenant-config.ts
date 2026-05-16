@@ -6,15 +6,19 @@ const CONFIG_CACHE_TTL = 300; // 5 minutes
 
 export async function getConfig<T>(tenantId: string, key: string, defaultValue: T): Promise<T> {
   const cacheKey = `config:${tenantId}:${key}`;
-  
-  // 1. Check Redis cache
-  const cached = await redis.get(cacheKey);
-  if (cached) {
-    try {
-      return JSON.parse(cached) as T;
-    } catch {
-      // ignore parse error and fallback to DB
+
+  // 1. Check Redis cache — fail-open: any Redis error falls through to DB
+  try {
+    const cached = await redis.get(cacheKey);
+    if (cached) {
+      try {
+        return JSON.parse(cached) as T;
+      } catch {
+        // ignore parse error
+      }
     }
+  } catch {
+    // Redis unavailable — continue to DB
   }
 
   // 2. Query DB
@@ -31,8 +35,12 @@ export async function getConfig<T>(tenantId: string, key: string, defaultValue: 
 
   const value = config ? (config.value as T) : defaultValue;
 
-  // 3. Cache result
-  await redis.setex(cacheKey, CONFIG_CACHE_TTL, JSON.stringify(value));
+  // 3. Cache result — best-effort, ignore errors
+  try {
+    await redis.setex(cacheKey, CONFIG_CACHE_TTL, JSON.stringify(value));
+  } catch {
+    // Redis unavailable — skip cache
+  }
 
   return value;
 }
@@ -52,5 +60,10 @@ export async function setConfig<T>(tenantId: string, key: string, value: T): Pro
       set: { value: value as any, updatedAt: new Date() },
     });
 
-  await redis.setex(cacheKey, CONFIG_CACHE_TTL, JSON.stringify(value));
+  // Best-effort cache update
+  try {
+    await redis.setex(cacheKey, CONFIG_CACHE_TTL, JSON.stringify(value));
+  } catch {
+    // Redis unavailable — skip cache
+  }
 }

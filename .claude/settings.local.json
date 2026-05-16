@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm --filter @saas/api type-check)",
+      "Bash(export PNPM_HOME=\"/c/Program Files/nodejs/node_modules/corepack/shims\")",
+      "Bash(export PATH=\"$PNPM_HOME:$PATH\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d.get\\('scripts',{}\\), indent=2\\)\\)\")",
+      "Bash(export PATH=\"/c/Program Files/nodejs/node_modules/corepack/shims:$PATH\")",
+      "Bash(npx tsc *)",
+      "Bash(grep -n \"activeTab === .lists.\\\\|}\\\\s*$\" \"G:/BACKUP 14-05-2026/Desktop/ChatGÜIRE/apps/web/src/app/dashboard/campaigns/page.tsx\")",
+      "Bash(echo \"# ChatGUIRE\")",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git branch *)",
+      "Bash(git remote *)",
+      "Bash(git push *)",
+      "Bash(gh repo *)",
+      "Bash(git ls-remote *)"
+    ]
+  }
+}

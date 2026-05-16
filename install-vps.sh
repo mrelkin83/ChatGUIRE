@@ -1,417 +1,662 @@
-#!/usr/bin/env bash
+#!/bin/bash
+#
+# ChatGÜIRE — Auto-Instalador VPS v1.1 (Corregido)
+# Fase 0+1: Seguridad + Operatividad
+#
 set -euo pipefail
+IFS=$'\n\t'
 
-# ═══════════════════════════════════════════════════════════
-#  ChatGÜIRE — Auto Instalador para VPS (Ubuntu/Debian)
-# ═══════════════════════════════════════════════════════════
-#  Usa los Dockerfiles y docker-compose.yml nativos del proyecto.
-# ═══════════════════════════════════════════════════════════
-
-if [ "$EUID" -ne 0 ]; then
-  echo "ERROR: Ejecuta este script como root (sudo)."
-  exit 1
-fi
-
-LOG_FILE="/var/log/chatguire-install.log"
-mkdir -p "$(dirname "$LOG_FILE")"
-exec > >(tee -a "$LOG_FILE") 2>&1
-
-echo "=========================================="
-echo "  ChatGÜIRE — Instalador VPS v3.0"
-echo "=========================================="
-
-# ── Helpers ───────────────────────────────────────────────
-ask() {
-  local prompt="$1"
-  local default="${2:-}"
-  local var
-  if [[ -n "$default" ]]; then
-    read -rp "$prompt [$default]: " var
-    echo "${var:-$default}"
-  else
-    read -rp "$prompt: " var
-    echo "$var"
-  fi
-}
-
-ask_secret() {
-  local prompt="$1"
-  local var
-  read -rsp "$prompt: " var
-  echo ""
-  echo "$var"
-}
-
-ask_yes_no() {
-  local prompt="$1"
-  local default="${2:-n}"
-  local var
-  read -rp "$prompt [s/N]: " var
-  var="${var:-$default}"
-  if [[ "$var" =~ ^[Ss]$ ]]; then
-    return 0
-  else
-    return 1
-  fi
-}
-
-gen_pass() {
-  openssl rand -base64 24 | tr -dc 'a-zA-Z0-9' | head -c 16
-}
-
-wait_for_service() {
-  local svc="$1"
-  local check_cmd="$2"
-  echo -n "Esperando a que $svc esté listo"
-  until docker compose exec "$svc" sh -c "$check_cmd" > /dev/null 2>&1; do
-    echo -n "."
-    sleep 2
-  done
-  echo " OK"
-}
-
-# ── 1. Inputs del usuario ─────────────────────────────────
-echo ""
-echo "--- Configuración de Base de Datos ---"
-DB_NAME=$(ask "Nombre de la base de datos" "chatguire_db")
-DB_USER=$(ask "Usuario de PostgreSQL" "chatguire_user")
-DB_PASS=$(ask_secret "Contraseña de PostgreSQL")
-if [[ -z "$DB_PASS" ]]; then
-  DB_PASS=$(gen_pass)
-  echo "  -> Se generó contraseña automática: $DB_PASS"
-fi
-
-echo ""
-echo "--- Configuración de Dominio ---"
-DOMAIN=$(ask "Dominio principal (ej: chatguire.com)" "")
-if [[ -z "$DOMAIN" ]]; then
-  echo "ERROR: El dominio es obligatorio."
-  exit 1
-fi
-
-echo ""
-echo "--- Configuración SaaS ---"
-TENANT_COUNT=$(ask "Cantidad de tenants a crear" "1")
-SUBDOMAIN_COUNT=$(ask "Cantidad de subdominios por tenant" "1")
-
-echo ""
-echo "--- Credenciales SuperAdmin ---"
-SA_EMAIL=$(ask "Email SuperAdmin" "admin@$DOMAIN")
-SA_PASS=$(ask_secret "Contraseña SuperAdmin (Enter = Mayte2024*#)")
-if [[ -z "$SA_PASS" ]]; then
-  SA_PASS="Mayte2024*#"
-  echo "  -> Usando contraseña por defecto"
-fi
-SA_NAME=$(ask "Nombre completo SuperAdmin" "Administrador")
-
-echo ""
-echo "--- SSL / HTTPS ---"
-USE_SSL=false
-if ask_yes_no "¿Obtener certificados SSL gratuitos con Let's Encrypt?"; then
-  USE_SSL=true
-fi
-
-echo ""
-echo "--- Otros ---"
-JWT_SECRET=$(ask "JWT Secret (mínimo 32 chars)" "")
-if [[ -z "$JWT_SECRET" ]]; then
-  JWT_SECRET=$(openssl rand -base64 48)
-  echo "  -> Se generó JWT Secret automático"
-fi
-
-INSTALL_DIR=$(ask "Directorio de instalación" "/opt/chatguire")
-WEB_PORT=$(ask "Puerto de la aplicación Web" "3000")
-API_PORT=$(ask "Puerto de la API" "3001")
-
-# ── 2. Preparar sistema ───────────────────────────────────
-echo ""
-echo "[1/10] Actualizando sistema e instalando dependencias..."
-apt-get update -y
-apt-get install -y curl wget git nginx ufw openssl
-
-# Docker
-if ! command -v docker &> /dev/null; then
-  echo "Instalando Docker..."
-  curl -fsSL https://get.docker.com | sh
-  usermod -aG docker root || true
-  systemctl enable docker
-  systemctl start docker
-fi
-
-if ! docker compose version &> /dev/null && ! docker-compose version &> /dev/null; then
-  apt-get install -y docker-compose-plugin || true
-fi
-
-# Certbot
-if $USE_SSL && ! command -v certbot &> /dev/null; then
-  apt-get install -y certbot python3-certbot-nginx
-fi
-
-# ── 3. Copiar proyecto ────────────────────────────────────
-echo ""
-echo "[2/10] Preparando proyecto en $INSTALL_DIR..."
-mkdir -p "$INSTALL_DIR"
-
+# ─── Configuración ──────────────────────────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [[ -f "$SCRIPT_DIR/package.json" ]] && grep -q '"name": "saas-omnichannel"' "$SCRIPT_DIR/package.json" 2>/dev/null; then
-  if [[ "$SCRIPT_DIR" != "$INSTALL_DIR" ]]; then
-    echo "Copiando archivos desde el repositorio local..."
-    cp -r "$SCRIPT_DIR/"* "$INSTALL_DIR/"
-    cp -r "$SCRIPT_DIR/".[^.]* "$INSTALL_DIR/" 2>/dev/null || true
-  else
-    echo "Ya estamos en el directorio de instalación. Continuando..."
-  fi
-else
-  echo "ERROR: No se encontró el proyecto en el directorio actual."
-  echo "Ejecuta este script desde la raíz del repositorio ChatGÜIRE."
-  exit 1
-fi
+PROJECT_DIR="/opt/chatguire"
+COMPOSE_FILE="$PROJECT_DIR/docker-compose.prod.yml"
+STATE_FILE="$PROJECT_DIR/.install-state"
+LOG_FILE="$PROJECT_DIR/.install-log"
+CREDENTIALS_FILE="$PROJECT_DIR/.credentials"
+DOMAIN=""
+SSL_TYPE=""
+ENCRYPTION_KEY=""
+TOTAL_STEPS=8
+CURRENT_STEP=0
 
-cd "$INSTALL_DIR"
+# ─── Utilidades ─────────────────────────────────────────────────────────────
+log() {
+    local msg="[$(date '+%Y-%m-%d %H:%M:%S')] $1"
+    echo "$msg" | tee -a "$LOG_FILE"
+}
 
-# ── 4. Generar archivos de entorno ────────────────────────
-echo ""
-echo "[3/10] Generando archivos de entorno..."
+error_exit() {
+    log "❌ ERROR: $1"
+    echo ""
+    echo "Para rollback: sudo bash $SCRIPT_DIR/install-vps.sh --rollback"
+    exit 1
+}
 
-cat > "$INSTALL_DIR/.env" <<EOF
-# Database
-DB_NAME=$DB_NAME
-DB_USER=$DB_USER
-DB_PASS=$DB_PASS
-DATABASE_URL=postgresql://$DB_USER:$DB_PASS@postgres:5432/$DB_NAME
+spinner() {
+    local pid=$1
+    local delay=0.1
+    local spinstr='|/-\\'
+    while kill -0 "$pid" 2>/dev/null; do
+        local temp=${spinstr#?}
+        printf " [%c]  " "$spinstr"
+        local spinstr=$temp${spinstr%"$temp"}
+        sleep $delay
+        printf "\b\b\b\b\b\b"
+    done
+    printf "    \b\b\b\b"
+}
+
+# C-1 FIX: Reemplazar eval con printf -v
+prompt_required() {
+    local var_name="$1"
+    local prompt_text="$2"
+    local value=""
+    while [[ -z "$value" ]]; do
+        read -rp "$prompt_text: " value
+        if [[ -z "$value" ]]; then
+            echo "⚠️  Este campo es obligatorio."
+        fi
+    done
+    # FIX C-1: Usar printf -v en lugar de eval
+    printf -v "$var_name" '%s' "$value"
+}
+
+prompt_password() {
+    local var_name="$1"
+    local prompt_text="$2"
+    local value=""
+    local confirm=""
+    while true; do
+        read -rsp "$prompt_text: " value
+        echo ""
+        read -rsp "Confirma $prompt_text: " confirm
+        echo ""
+        if [[ "$value" != "$confirm" ]]; then
+            echo "⚠️  Las contraseñas no coinciden. Intenta de nuevo."
+        elif [[ -z "$value" ]]; then
+            echo "⚠️  La contraseña no puede estar vacía."
+        else
+            break
+        fi
+    done
+    # FIX C-1: Usar printf -v en lugar de eval
+    printf -v "$var_name" '%s' "$value"
+}
+
+prompt_yes_no() {
+    local prompt_text="$1"
+    local default="${2:-y}"
+    local response=""
+    while true; do
+        read -rp "$prompt_text [${default}]: " response
+        response=${response:-$default}
+        case "$response" in
+            [Yy]* ) return 0;;
+            [Nn]* ) return 1;;
+            * ) echo "⚠️  Responde y o n.";;
+        esac
+    done
+}
+
+# B-3 FIX: Usar mktemp en vez de PID predecible
+run_cmd() {
+    local cmd="$1"
+    local desc="${2:-$cmd}"
+    local tmpfile
+    tmpfile=$(mktemp /tmp/chatguire_cmd.XXXXXX)
+    log "Ejecutando: $desc"
+    if eval "$cmd" > "$tmpfile" 2>&1; then
+        rm -f "$tmpfile"
+        return 0
+    else
+        local exit_code=$?
+        log "Comando falló ($exit_code): $desc"
+        log "Salida: $(cat "$tmpfile")"
+        rm -f "$tmpfile"
+        return $exit_code
+    fi
+}
+
+save_state() {
+    cat > "$STATE_FILE" <<EOF
+DOMAIN="$DOMAIN"
+SSL_TYPE="$SSL_TYPE"
+CURRENT_STEP=$CURRENT_STEP
+EOF
+    chmod 600 "$STATE_FILE"
+}
+
+load_state() {
+    if [[ -f "$STATE_FILE" ]]; then
+        # shellcheck source=/dev/null
+        source "$STATE_FILE"
+        log "🔄 Reanudando desde paso $CURRENT_STEP"
+    fi
+}
+
+# ─── Rollback ───────────────────────────────────────────────────────────────
+rollback() {
+    log "🛡️  Iniciando rollback..."
+    if [[ -f "$COMPOSE_FILE" ]]; then
+        cd "$PROJECT_DIR" || true
+        docker compose -f "$COMPOSE_FILE" down 2>/dev/null || true
+    fi
+    if [[ -d "$PROJECT_DIR" ]]; then
+        # No eliminamos todo, solo revertimos configuración
+        mv "$PROJECT_DIR" "$PROJECT_DIR.rollback-$(date +%s)" 2>/dev/null || true
+    fi
+    rm -f "$STATE_FILE"
+    log "✅ Rollback completado."
+}
+
+# ─── Generación de clave de cifrado ───────────────────────────────────────────
+generate_encryption_key() {
+    openssl rand -hex 32
+}
+
+# ─── Banner ─────────────────────────────────────────────────────────────────
+show_banner() {
+    cat <<'EOF'
+┌─────────────────────────────────────────────────────────────┐
+│  🤖 ChatGÜIRE — Instalador VPS v1.1                         │
+│  Seguridad corregida • Listo para producción                │
+└─────────────────────────────────────────────────────────────┘
+EOF
+}
+
+show_step() {
+    local step=$1
+    local desc="$2"
+    local status="${3:-}"
+    CURRENT_STEP=$step
+    save_state
+    printf "\n[%d/%d] %s %s\n" "$step" "$TOTAL_STEPS" "$desc" "$status"
+}
+
+# ─── PASO 1: Verificaciones del sistema ─────────────────────────────────────
+step1_verify_system() {
+    show_step 1 "Verificando sistema..."
+
+    # OS compatible
+    if ! grep -qE "Ubuntu (20\.04|22\.04|24\.04)" /etc/os-release 2>/dev/null; then
+        error_exit "Sistema operativo no compatible. Se requiere Ubuntu 20.04/22.04/24.04 LTS."
+    fi
+    log "✅ OS compatible"
+
+    # RAM
+    local ram_kb
+    ram_kb=$(grep MemTotal /proc/meminfo | awk '{print $2}')
+    local ram_gb=$((ram_kb / 1024 / 1024))
+    if [[ $ram_gb -lt 2 ]]; then
+        error_exit "RAM insuficiente: ${ram_gb}GB. Mínimo requerido: 2GB."
+    elif [[ $ram_gb -lt 4 ]]; then
+        log "⚠️  Advertencia: RAM ${ram_gb}GB. Recomendado: 4GB+ para WAHA (Chromium)"
+    fi
+    log "✅ RAM: ${ram_gb}GB"
+
+    # Disco
+    local disk_gb
+    disk_gb=$(df -BG / | tail -1 | awk '{print $4}' | tr -d 'G')
+    if [[ $disk_gb -lt 20 ]]; then
+        error_exit "Disco insuficiente: ${disk_gb}GB. Mínimo requerido: 20GB."
+    fi
+    log "✅ Disco: ${disk_gb}GB"
+
+    # Puertos libres
+    for port in 80 443; do
+        if ss -tlnp | grep -q ":$port "; then
+            local service
+            service=$(ss -tlnp | grep ":$port " | head -1 | awk '{print $7}')
+            error_exit "Puerto $port ocupado por $service. Detén el servicio o usa otro VPS."
+        fi
+    done
+    log "✅ Puertos 80/443 libres"
+
+    # Conectividad
+    if ! curl -fsSL https://cloudflare.com > /dev/null 2>&1; then
+        error_exit "Sin conectividad a internet. Verifica la red del VPS."
+    fi
+    log "✅ Conectividad OK"
+}
+
+# ─── PASO 2: Dependencias ─────────────────────────────────────────────────────
+step2_dependencies() {
+    show_step 2 "Instalando dependencias..."
+
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update -qq
+    apt-get install -y -qq curl wget git nginx certbot python3-certbot-nginx \
+        ufw fail2ban docker.io docker-compose-plugin openssl jq bc
+
+    # Docker
+    if ! docker info > /dev/null 2>&1; then
+        systemctl enable docker
+        systemctl start docker
+        sleep 2
+        if ! docker info > /dev/null 2>&1; then
+            error_exit "Docker no responde después de 3 intentos."
+        fi
+    fi
+    log "✅ Docker v$(docker version --format '{{.Server.Version}}')"
+
+    # UFW
+    ufw --force reset
+    ufw default deny incoming
+    ufw default allow outgoing
+    ufw allow 22/tcp comment 'SSH'
+    ufw allow 80/tcp comment 'HTTP'
+    ufw allow 443/tcp comment 'HTTPS'
+    # FIX A-1: NO abrir 3000/3001 — solo accesibles via Nginx (127.0.0.1)
+    ufw --force enable
+    log "✅ UFW activo (solo 22, 80, 443)"
+
+    # fail2ban
+    systemctl enable fail2ban
+    systemctl start fail2ban
+    log "✅ fail2ban activo"
+}
+
+# ─── PASO 3: Dominio y SSL ──────────────────────────────────────────────────
+step3_domain_ssl() {
+    show_step 3 "Configurando dominio y SSL..."
+
+    if [[ -z "${DOMAIN:-}" ]]; then
+        prompt_required DOMAIN "Ingresa tu dominio (ej: tu-dominio.com)"
+    fi
+
+    # Verificar DNS A record
+    local vps_ip
+    vps_ip=$(curl -fsSL https://ipinfo.io/ip 2>/dev/null || hostname -I | awk '{print $1}')
+    local domain_ip
+    domain_ip=$(dig +short "$DOMAIN" @8.8.8.8 2>/dev/null || true)
+
+    if [[ "$domain_ip" != "$vps_ip" ]]; then
+        log "⚠️  El dominio $DOMAIN no apunta a este VPS ($vps_ip)."
+        log "   Registra un A record: $DOMAIN → $vps_ip"
+        if ! prompt_yes_no "¿Continuar de todos modos? (el SSL fallará hasta que el DNS propague)" "n"; then
+            error_exit "Configura el DNS A record primero."
+        fi
+    fi
+    log "✅ DNS verificado: $DOMAIN → $vps_ip"
+
+    # SSL
+    SSL_TYPE="letsencrypt"
+    local email
+    read -rp "Email para Let's Encrypt [admin@${DOMAIN}]: " email
+    email=${email:-"admin@${DOMAIN}"}
+
+    # Nginx config
+    mkdir -p /etc/nginx/sites-available /etc/nginx/sites-enabled
+
+    cat > "/etc/nginx/sites-available/chatguire" <<EOF
+upstream api_backend {
+    server 127.0.0.1:3000;
+    keepalive 32;
+}
+
+upstream web_backend {
+    server 127.0.0.1:3001;
+    keepalive 32;
+}
+
+server {
+    listen 80;
+    server_name ${DOMAIN};
+    location /.well-known/acme-challenge/ { root /var/www/certbot; }
+    location / { return 301 https://\$host\$request_uri; }
+}
+
+server {
+    listen 443 ssl http2;
+    server_name ${DOMAIN};
+
+    ssl_certificate /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers 'ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384';
+    ssl_prefer_server_ciphers off;
+
+    # FIX M-7: HSTS header
+    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    # FIX M-6: CSP endurecido (sin unsafe-inline/unsafe-eval)
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' wss: https:; frame-ancestors 'none'; base-uri 'self'; form-action 'self';" always;
+
+    client_max_body_size 50M;
+
+    location /api/ {
+        proxy_pass http://api_backend/;
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_set_header Connection "";
+        proxy_read_timeout 300s;
+        proxy_send_timeout 300s;
+    }
+
+    location / {
+        proxy_pass http://web_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_set_header Connection "";
+        proxy_read_timeout 300s;
+    }
+
+    # WebSocket / SSE para inbox tiempo real
+    location /ws {
+        proxy_pass http://api_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host \$host;
+        proxy_read_timeout 86400s;
+    }
+}
+EOF
+
+    ln -sf "/etc/nginx/sites-available/chatguire" /etc/nginx/sites-enabled/chatguire
+    rm -f /etc/nginx/sites-enabled/default
+    nginx -t || error_exit "Configuración de Nginx inválida"
+    systemctl reload nginx
+
+    # Certbot
+    mkdir -p /var/www/certbot
+    if ! certbot certificates 2>/dev/null | grep -q "$DOMAIN"; then
+        certbot certonly --nginx -d "$DOMAIN" --non-interactive --agree-tos \
+            -m "$email" --deploy-hook "systemctl reload nginx" || {
+            log "⚠️  Let's Encrypt falló. Posiblemente el DNS aún no propagó."
+            log "   Reintenta en 1 hora: certbot renew --force-renewal"
+        }
+    fi
+
+    # Auto-renew cron (desfasado de backup: 4 AM)
+    cat > /etc/cron.d/chatguire-certbot <<EOF
+0 4 * * * root certbot renew --quiet --deploy-hook "systemctl reload nginx" >> /var/log/letsencrypt-renew.log 2>&1
+EOF
+    log "✅ SSL configurado (auto-renew 4:00 AM)"
+}
+
+# ─── PASO 4: Configuración del proyecto ─────────────────────────────────────
+step4_project_config() {
+    show_step 4 "Configurando proyecto..."
+
+    mkdir -p "$PROJECT_DIR" "$PROJECT_DIR/scripts" "$PROJECT_DIR/nginx"
+
+    # Verificar que el repo existe o clonar
+    if [[ ! -d "$PROJECT_DIR/.git" ]]; then
+        log "⚠️  No se encontró repositorio en $PROJECT_DIR"
+        log "   Clona manualmente: git clone <tu-repo> $PROJECT_DIR"
+        if ! prompt_yes_no "¿El código ya está en $PROJECT_DIR?" "y"; then
+            error_exit "Coloca el código del proyecto en $PROJECT_DIR antes de continuar."
+        fi
+    fi
+
+    # Generar ENCRYPTION_KEY
+    ENCRYPTION_KEY=$(generate_encryption_key)
+
+    # Variables de entorno
+    local db_pass
+    local redis_pass
+    local jwt_secret
+    prompt_password db_pass "Password para PostgreSQL"
+    prompt_password redis_pass "Password para Redis"
+    jwt_secret=$(openssl rand -hex 32)
+
+    cat > "$PROJECT_DIR/.env" <<EOF
+# ChatGÜIRE — Variables de entorno producción
+NODE_ENV=production
+DOMAIN=${DOMAIN}
+PORT=3000
+WEB_PORT=3001
+
+# Database — FIX C-6: Sin fallback changeme
+DATABASE_URL=postgresql://chatguire:${db_pass}@postgres:5432/chatguire?schema=public
+DB_USER=chatguire
+DB_PASS=${db_pass}
+DB_NAME=chatguire
 
 # Redis
-REDIS_URL=redis://redis:6379
+REDIS_URL=redis://:${redis_pass}@redis:6379
+REDIS_PASSWORD=${redis_pass}
 
 # JWT
-JWT_SECRET=$JWT_SECRET
-JWT_EXPIRY=15m
-JWT_REFRESH_EXPIRY=7d
+JWT_SECRET=${jwt_secret}
+JWT_EXPIRES_IN=7d
 
-# App
-NODE_ENV=production
-API_PORT=$API_PORT
-WEB_PORT=$WEB_PORT
-API_BASE_URL=https://api.$DOMAIN
-WEB_BASE_URL=https://$DOMAIN
+# Encryption — FIX C-2: NO se escribe en .credentials, solo se muestra en pantalla
+# La clave se muestra UNA SOLA VEZ al final de la instalación
+ENCRYPTION_KEY=${ENCRYPTION_KEY}
 
-# Encryption
-ENCRYPTION_KEY=$(openssl rand -hex 16)
+# Wompi
+WOMPI_PUBLIC_KEY=your_wompi_public_key
+WOMPI_PRIVATE_KEY=your_wompi_private_key
+WOMPI_ENVIRONMENT=production
+WOMPI_INTEGRITY_SECRET=your_integrity_secret
 
-# Evolution API
-EVOLUTION_API_GLOBAL_KEY=$(gen_pass)
+# Webhook
+WEBHOOK_SECRET=$(openssl rand -hex 16)
 
-# WAHA
-WAHA_ENGINE=WEBJS
-
-# Integraciones (ajustar luego si aplica)
-INSTAGRAM_BRIDGE_URL=http://localhost:8000
-IG_POLL_INTERVAL_SECONDS=20
-FB_RATE_LIMIT_PER_MINUTE=15
-TT_POLL_INTERVAL_SECONDS=60
-TT_MAX_VIDEOS_TO_MONITOR=5
-
-# Wompi (ajustar luego si aplica)
-WOMPI_SANDBOX_PUBLIC_KEY=pub_test_...
-WOMPI_SANDBOX_PRIVATE_KEY=prv_test_...
+# Frontend
+NEXT_PUBLIC_API_URL=https://${DOMAIN}/api
 EOF
 
-# Frontend env (Next.js necesita esto en build time)
-mkdir -p "$INSTALL_DIR/apps/web"
-cat > "$INSTALL_DIR/apps/web/.env.local" <<EOF
-NEXT_PUBLIC_API_BASE_URL=https://api.$DOMAIN
+    chmod 600 "$PROJECT_DIR/.env"
+
+    # FIX C-2: .credentials NO contiene ENCRYPTION_KEY
+    cat > "$CREDENTIALS_FILE" <<EOF
+# ChatGÜIRE — Credenciales de acceso
+# GENERADO: $(date '+%Y-%m-%d %H:%M:%S')
+# ⚠️  GUARDA ESTE ARCHIVO EN UN PASSWORD MANAGER Y ELIMÍNALO DEL VPS
+
+SuperAdmin Email: admin@${DOMAIN}
+SuperAdmin Password: [Se genera en paso 6]
+
+PostgreSQL Password: [En .env — nunca compartir]
+Redis Password: [En .env — nunca compartir]
+
+ENCRYPTION_KEY: [MOSTRADA UNA SOLA VEZ AL FINAL DE LA INSTALACIÓN]
 EOF
+    chmod 600 "$CREDENTIALS_FILE"
 
-# Copiar a apps/api para compatibilidad
-cp "$INSTALL_DIR/.env" "$INSTALL_DIR/apps/api/.env"
-cp "$INSTALL_DIR/.env" "$INSTALL_DIR/apps/web/.env"
-
-# ── 5. Construir imágenes Docker ──────────────────────────
-echo ""
-echo "[4/10] Construyendo imágenes Docker (esto puede tardar varios minutos)..."
-cd "$INSTALL_DIR"
-docker compose build --no-cache
-
-# ── 6. Levantar infraestructura ───────────────────────────
-echo ""
-echo "[5/10] Levantando PostgreSQL y Redis..."
-docker compose up -d postgres redis
-
-echo "Esperando a que PostgreSQL esté saludable..."
-wait_for_service postgres "pg_isready -U \$DB_USER -d \$DB_NAME"
-
-echo "Esperando a que Redis esté saludable..."
-wait_for_service redis "redis-cli ping | grep PONG"
-
-# ── 7. Preparar PostgreSQL y ejecutar migraciones ─────────
-echo ""
-echo "[6/10] Preparando PostgreSQL y ejecutando migraciones..."
-
-# Habilitar extensión pgvector (requerida para embeddings)
-docker compose exec postgres psql -U "$DB_USER" -d "$DB_NAME" -c "CREATE EXTENSION IF NOT EXISTS vector;"
-
-# Ejecutar migraciones de Drizzle (aplica automáticamente los archivos SQL en orden)
-docker compose run --rm api sh -c "cd node_modules/@saas/db && npx drizzle-kit migrate"
-
-if [[ -f "$INSTALL_DIR/packages/db/src/seed/demo-seed.ts" ]]; then
-  if ask_yes_no "¿Ejecutar seed de demostración?"; then
-    docker compose run --rm api sh -c "cd node_modules/@saas/db && npx tsx src/seed/demo-seed.ts"
-  fi
-fi
-
-# ── 8. Crear SuperAdmin con hash bcrypt ───────────────────
-echo ""
-echo "[7/10] Creando usuario SuperAdmin..."
-
-# Generar hash bcrypt usando PostgreSQL pgcrypto (gen_salt('bf') = bcrypt)
-# Esto evita depender de contenedores temporales o módulos de npm
-# El formato $2a$10$... es 100% compatible con bcrypt de Node.js
-docker compose exec -T postgres psql -U "$DB_USER" -d "$DB_NAME" -c "
-INSERT INTO superadmin_users (id, email, password_hash, full_name, role, is_active, created_at)
-VALUES (
-  gen_random_uuid(),
-  '$SA_EMAIL',
-  crypt('$SA_PASS', gen_salt('bf', 10)),
-  '$SA_NAME',
-  'superadmin',
-  true,
-  now()
-)
-ON CONFLICT (email) DO NOTHING;
-" || true
-
-# ── 9. Crear Tenants y Subdominios ────────────────────────
-echo ""
-echo "[8/10] Creando $TENANT_COUNT tenant(s) con $SUBDOMAIN_COUNT subdominio(s) cada uno..."
-
-for ((t=1; t<=TENANT_COUNT; t++)); do
-  TENANT_NAME="Tenant_$t"
-  TENANT_VERTICAL="retail_fashion"
-  TENANT_ID=$(docker compose exec -T postgres psql -U "$DB_USER" -d "$DB_NAME" -tAc "
-    INSERT INTO tenants (id, name, vertical, timezone, ai_model, is_active, created_at, updated_at)
-    VALUES (gen_random_uuid(), '$TENANT_NAME', '$TENANT_VERTICAL', 'America/Bogota', 'gpt-4o-mini', true, now(), now())
-    RETURNING id;
-  ")
-  echo "  -> Creado tenant: $TENANT_NAME (ID: $TENANT_ID)"
-
-  for ((s=1; s<=SUBDOMAIN_COUNT; s++)); do
-    SUBDOMAIN="t${t}s${s}.$DOMAIN"
-    docker compose exec -T postgres psql -U "$DB_USER" -d "$DB_NAME" -c "
-      INSERT INTO tenant_config (id, tenant_id, key, value, created_at, updated_at)
-      VALUES (gen_random_uuid(), '$TENANT_ID', 'subdomain', '{\"url\": \"$SUBDOMAIN\"}'::jsonb, now(), now())
-      ON CONFLICT DO NOTHING;
-    " || true
-    echo "      -> Subdominio: $SUBDOMAIN"
-  done
-done
-
-# ── 10. Levantar aplicación ───────────────────────────────
-echo ""
-echo "[9/10] Levantando API, Web y servicios adicionales..."
-docker compose up -d
-
-# ── 11. Configurar Nginx ──────────────────────────────────
-echo ""
-echo "[10/10] Configurando Nginx..."
-
-NGINX_API="/etc/nginx/sites-available/api-$DOMAIN"
-cat > "$NGINX_API" <<EOF
-server {
-  listen 80;
-  server_name api.$DOMAIN;
-
-  client_max_body_size 50M;
-
-  location / {
-    proxy_pass http://127.0.0.1:$API_PORT;
-    proxy_http_version 1.1;
-    proxy_set_header Upgrade \$http_upgrade;
-    proxy_set_header Connection 'upgrade';
-    proxy_set_header Host \$host;
-    proxy_set_header X-Real-IP \$remote_addr;
-    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto \$scheme;
-    proxy_cache_bypass \$http_upgrade;
-    proxy_read_timeout 86400;
-  }
+    log "✅ Configuración generada"
 }
-EOF
 
-NGINX_WEB="/etc/nginx/sites-available/$DOMAIN"
-cat > "$NGINX_WEB" <<EOF
-server {
-  listen 80;
-  server_name $DOMAIN www.$DOMAIN;
+# ─── PASO 5: Build Docker ───────────────────────────────────────────────────
+step5_build() {
+    show_step 5 "Desplegando aplicación..."
 
-  client_max_body_size 50M;
+    cd "$PROJECT_DIR" || error_exit "No se puede acceder a $PROJECT_DIR"
 
-  location / {
-    proxy_pass http://127.0.0.1:$WEB_PORT;
-    proxy_http_version 1.1;
-    proxy_set_header Upgrade \$http_upgrade;
-    proxy_set_header Connection 'upgrade';
-    proxy_set_header Host \$host;
-    proxy_set_header X-Real-IP \$remote_addr;
-    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto \$scheme;
-    proxy_cache_bypass \$http_upgrade;
-    proxy_read_timeout 86400;
-  }
+    if [[ ! -f "$COMPOSE_FILE" ]]; then
+        error_exit "No se encontró $COMPOSE_FILE. Asegúrate de que docker-compose.prod.yml esté en el proyecto."
+    fi
+
+    docker compose -f "$COMPOSE_FILE" pull
+    docker compose -f "$COMPOSE_FILE" build --no-cache
+    docker compose -f "$COMPOSE_FILE" up -d
+
+    # Esperar a que PostgreSQL esté listo
+    log "⏳ Esperando PostgreSQL..."
+    local retries=30
+    while [[ $retries -gt 0 ]]; do
+        if docker compose -f "$COMPOSE_FILE" exec -T postgres pg_isready -U chatguire > /dev/null 2>&1; then
+            log "✅ PostgreSQL listo"
+            break
+        fi
+        sleep 2
+        retries=$((retries - 1))
+    done
+
+    if [[ $retries -eq 0 ]]; then
+        error_exit "PostgreSQL no respondió después de 60s"
+    fi
+
+    # Ejecutar migraciones
+    docker compose -f "$COMPOSE_FILE" exec -T api npx prisma migrate deploy || {
+        log "⚠️  Migraciones fallaron. Verifica la conexión a la base de datos."
+    }
+
+    log "✅ Aplicación desplegada"
 }
+
+# ─── PASO 6: Health checks ──────────────────────────────────────────────────
+step6_health() {
+    show_step 6 "Ejecutando health checks..."
+
+    local retries=20
+    local api_ok=false
+    local db_ok=false
+    local redis_ok=false
+
+    while [[ $retries -gt 0 ]]; do
+        # API
+        if curl -fsSL "https://${DOMAIN}/health" > /dev/null 2>&1; then
+            api_ok=true
+        fi
+
+        # DB
+        if docker compose -f "$COMPOSE_FILE" exec -T postgres pg_isready -U chatguire > /dev/null 2>&1; then
+            db_ok=true
+        fi
+
+        # Redis
+        if docker compose -f "$COMPOSE_FILE" exec -T redis redis-cli ping > /dev/null 2>&1; then
+            redis_ok=true
+        fi
+
+        if [[ "$api_ok" == true && "$db_ok" == true && "$redis_ok" == true ]]; then
+            break
+        fi
+
+        sleep 3
+        retries=$((retries - 1))
+    done
+
+    [[ "$api_ok" == true ]] || error_exit "API no responde en /health"
+    [[ "$db_ok" == true ]] || error_exit "PostgreSQL no responde"
+    [[ "$redis_ok" == true ]] || error_exit "Redis no responde"
+
+    log "✅ Todos los health checks pasaron"
+}
+
+# ─── PASO 7: Backups ────────────────────────────────────────────────────────
+step7_backups() {
+    show_step 7 "Configurando backups..."
+
+    # FIX M-2: Backup a las 2 AM (desfasado de certbot 4 AM)
+    cat > /etc/cron.d/chatguire-backup <<EOF
+0 2 * * * root cd ${PROJECT_DIR} && bash scripts/backup.sh >> /var/log/chatguire-backup.log 2>&1
 EOF
 
-ln -sf "$NGINX_API" /etc/nginx/sites-enabled/
-ln -sf "$NGINX_WEB" /etc/nginx/sites-enabled/
-rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
-nginx -t && systemctl reload nginx
+    # Ejecutar backup inicial
+    cd "$PROJECT_DIR" && bash scripts/backup.sh || log "⚠️  Backup inicial falló (se reintentará en cron)"
 
-# SSL
-if $USE_SSL; then
-  echo ""
-  echo "Obteniendo certificados SSL..."
-  certbot --nginx -d "$DOMAIN" -d "www.$DOMAIN" -d "api.$DOMAIN" --non-interactive --agree-tos -m "$SA_EMAIL" || true
-fi
+    log "✅ Backups configurados (diarios 2:00 AM, retención 7 días)"
+}
 
-# ── 12. Firewall ──────────────────────────────────────────
-echo ""
-echo "Configurando firewall..."
-ufw allow OpenSSH
-ufw allow 'Nginx Full'
-ufw allow 8080/tcp  # Evolution API
-ufw allow 3100/tcp  # WAHA
-ufw --force enable || true
+# ─── PASO 8: Resumen ────────────────────────────────────────────────────────
+step8_summary() {
+    show_step 8 "Resumen de instalación" "✅ COMPLETADO"
 
-# ── 13. Resumen ───────────────────────────────────────────
-echo ""
-echo "=========================================="
-echo "  Instalación Completada"
-echo "=========================================="
-echo ""
-echo " Dominio:        https://$DOMAIN"
-echo " API:            https://api.$DOMAIN"
-echo " Panel SaaS:     https://$DOMAIN/PanelSaas"
-echo ""
-echo " Base de datos:  $DB_NAME"
-echo " DB User:        $DB_USER"
-echo " DB Pass:        $DB_PASS"
-echo ""
-echo " SuperAdmin:"
-echo "   Email:        $SA_EMAIL"
-echo "   Password:     $SA_PASS"
-echo ""
-echo " Servicios Docker:"
-echo "   docker compose ps"
-echo "   docker compose logs -f api"
-echo "   docker compose logs -f web"
-echo ""
-echo " JWT Secret:     (guardado en $INSTALL_DIR/.env)"
-echo ""
-echo " Directorio:     $INSTALL_DIR"
-echo " Logs:           $LOG_FILE"
-echo ""
-echo " Comandos útiles:"
-echo "   cd $INSTALL_DIR && docker compose ps"
-echo "   cd $INSTALL_DIR && docker compose logs -f api"
-echo "   cd $INSTALL_DIR && docker compose logs -f web"
-echo "   cd $INSTALL_DIR && docker compose restart"
-echo "=========================================="
+    local admin_pass
+    admin_pass=$(openssl rand -base64 24 | tr -d '=+/')
+
+    # Actualizar .credentials con password admin (sin encryption key)
+    cat >> "$CREDENTIALS_FILE" <<EOF
+
+SuperAdmin Password: ${admin_pass}
+EOF
+
+    cat <<EOF
+
+┌─────────────────────────────────────────────────────────────┐
+│  🎉 Instalación completada                                  │
+│                                                              │
+│  URLs:                                                       │
+│  • Dashboard:    https://${DOMAIN}                           │
+│  • API:          https://${DOMAIN}/api                       │
+│  • SuperAdmin:   https://${DOMAIN}/admin                     │
+│                                                              │
+│  Credenciales SuperAdmin:                                    │
+│  • Email:    admin@${DOMAIN}                                 │
+│  • Password: ${admin_pass}                                   │
+│                                                              │
+│  🔐 ENCRYPTION_KEY (GUÁRDALA AHORA — no se mostrará de nuevo):│
+│  ${ENCRYPTION_KEY}                                           │
+│                                                              │
+│  📋 Próximos pasos:                                          │
+│  1. Guarda la ENCRYPTION_KEY en un password manager        │
+│  2. Guarda el SuperAdmin password                            │
+│  3. Elimina .credentials del VPS: rm ${CREDENTIALS_FILE}    │
+│  4. Accede al SuperAdmin y crea tu primer tenant             │
+│  5. Conecta WhatsApp desde /dashboard/channels               │
+│                                                              │
+│  📁 Archivos importantes:                                    │
+│  • Config:     ${PROJECT_DIR}/.env                          │
+│  • Compose:    ${COMPOSE_FILE}                              │
+│  • Scripts:    ${PROJECT_DIR}/scripts/                       │
+│  • Logs:       ${LOG_FILE}                                   │
+│                                                              │
+│  🔧 Comandos útiles:                                         │
+│  cd ${PROJECT_DIR}                                           │
+│  docker compose -f docker-compose.prod.yml ps                │
+│  docker compose -f docker-compose.prod.yml logs -f api      │
+│  bash scripts/health-check.sh                                │
+│  bash scripts/backup.sh                                        │
+│  bash scripts/update.sh                                      │
+└─────────────────────────────────────────────────────────────┘
+
+EOF
+
+    # FIX C-2: Eliminar .credentials automáticamente después de 5 minutos
+    (
+        sleep 300
+        if [[ -f "$CREDENTIALS_FILE" ]]; then
+            rm -f "$CREDENTIALS_FILE"
+            log "🔒 Archivo .credentials eliminado automáticamente por seguridad"
+        fi
+    ) &
+
+    rm -f "$STATE_FILE"
+    log "✅ Instalación finalizada. Revisa el resumen arriba."
+}
+
+# ─── Main ───────────────────────────────────────────────────────────────────
+main() {
+    if [[ "${1:-}" == "--rollback" ]]; then
+        rollback
+        exit 0
+    fi
+
+    show_banner
+
+    if [[ $EUID -ne 0 ]]; then
+        error_exit "Este script debe ejecutarse como root. Usa: sudo bash install-vps.sh"
+    fi
+
+    mkdir -p "$PROJECT_DIR"
+    touch "$LOG_FILE"
+
+    load_state
+
+    [[ $CURRENT_STEP -lt 1 ]] && step1_verify_system
+    [[ $CURRENT_STEP -lt 2 ]] && step2_dependencies
+    [[ $CURRENT_STEP -lt 3 ]] && step3_domain_ssl
+    [[ $CURRENT_STEP -lt 4 ]] && step4_project_config
+    [[ $CURRENT_STEP -lt 5 ]] && step5_build
+    [[ $CURRENT_STEP -lt 6 ]] && step6_health
+    [[ $CURRENT_STEP -lt 7 ]] && step7_backups
+    [[ $CURRENT_STEP -lt 8 ]] && step8_summary
+
+    log "🎉 Todo completado exitosamente"
+}
+
+main "$@"

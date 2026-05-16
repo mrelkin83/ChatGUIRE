@@ -12,6 +12,8 @@ import { processVerEstadoPedido } from './processors/ver-estado-pedido.processor
 import { processReagendarCita } from './processors/reagendar-cita.processor';
 import { processVerCitas } from './processors/ver-citas.processor';
 import { processScalamiento } from './processors/scalamiento.processor';
+import { processVerServicios } from './processors/ver-servicios.processor';
+import { processCrearReserva } from './processors/crear-reserva.processor';
 import { logger } from '../../lib/logger';
 
 export async function executeAIAction(params: any): Promise<void> {
@@ -69,7 +71,15 @@ export async function executeAIAction(params: any): Promise<void> {
     case 'SCALAMIENTO':
       await processScalamiento(params);
       break;
-    
+
+    case 'VER_SERVICIOS':
+      await processVerServicios(params);
+      break;
+
+    case 'CREAR_RESERVA':
+      await processCrearReserva(params);
+      break;
+
     default:
       logger.warn(`Action processor not implemented for: ${accion.accion}`);
       break;
