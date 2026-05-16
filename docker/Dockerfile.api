@@ -6,8 +6,6 @@ WORKDIR /app
 COPY . .
 RUN apk add --no-cache python3 make g++
 RUN pnpm install --frozen-lockfile
-RUN pnpm --filter @saas/shared build
-RUN pnpm --filter @saas/db build
 RUN pnpm --filter @saas/api build
 
 ENV CI=true
