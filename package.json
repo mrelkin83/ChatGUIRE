@@ -5,6 +5,8 @@
     "build": "turbo build",
     "dev": "turbo dev",
     "lint": "turbo lint",
+    "type-check": "turbo type-check",
+    "test:ci": "turbo test --concurrency=1",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "db:generate": "turbo db:generate",
     "db:migrate": "turbo db:migrate",

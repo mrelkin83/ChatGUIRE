@@ -161,8 +161,8 @@ jobs:
               exit 1
             }
 
-            docker compose -f docker-compose.yml pull
-            docker compose -f docker-compose.yml up -d --remove-orphans
+            docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml up -d --remove-orphans
 
             # Smoke tests — rollback automático si fallan
             bash scripts/post-deploy-test.sh

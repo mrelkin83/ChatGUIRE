@@ -2,9 +2,17 @@
   "name": "@saas/db",
   "version": "1.0.0",
   "private": true,
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
   "scripts": {
+    "build": "tsc --outDir dist",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
@@ -21,6 +29,7 @@
     "uuid": "^9.0.1"
   },
   "devDependencies": {
-    "@types/uuid": "^9.0.8"
+    "@types/uuid": "^9.0.8",
+    "typescript": "^5.4.5"
   }
 }

@@ -28,6 +28,7 @@ import { expireDemoTenants } from './jobs/demo-expiration-checker.job';
 import { processUnansweredQueries } from './jobs/ai-learning.job';
 import { aggregateDailyAnalytics } from './jobs/analytics-aggregator.job';
 import { redis } from './lib/redis';
+import { db, sql } from '@saas/db';
 
 const server = Fastify({ logger: false });
 
@@ -123,8 +124,7 @@ async function main() {
     } catch {}
 
     try {
-      const { db, sql } = await import('@saas/db');
-      await (db as any).execute(sql`SELECT 1`);
+      await db.execute(sql`SELECT 1`);
       dbOk = true;
     } catch {}
 

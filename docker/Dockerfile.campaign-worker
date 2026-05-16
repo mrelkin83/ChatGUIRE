@@ -1,11 +1,13 @@
 FROM node:22-alpine AS builder
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
-RUN corepack enable
+RUN corepack enable && corepack prepare pnpm@10.26.1 --activate
 WORKDIR /app
 COPY . .
 RUN apk add --no-cache python3 make g++
-RUN pnpm install
+RUN pnpm install --frozen-lockfile
+RUN pnpm --filter @saas/shared build
+RUN pnpm --filter @saas/db build
 RUN pnpm --filter @saas/api build
 
 ENV CI=true
