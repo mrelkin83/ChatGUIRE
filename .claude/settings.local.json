@@ -15,7 +15,9 @@
       "Bash(git remote *)",
       "Bash(git push *)",
       "Bash(gh repo *)",
-      "Bash(git ls-remote *)"
+      "Bash(git ls-remote *)",
+      "Bash(docker version *)",
+      "WebSearch"
     ]
   }
 }
