@@ -74,7 +74,7 @@ interface CustomerProfile {
   avatar?: string;
   channel: string;
   tags: string[];
-  orders: { id: string; amount: number; status: string }[];
+  orders: { id: string; orderNumber?: string; amount: number; status: string }[];
   appointments: { id: string; date: string; service: string; status: string }[];
   metrics: {
     totalOrders: number;

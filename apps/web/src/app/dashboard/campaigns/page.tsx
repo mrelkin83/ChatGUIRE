@@ -7,7 +7,7 @@ import {
   Calendar, MessageSquare, BarChart3, X, Loader2, Upload,
   CheckCircle2, XCircle, Clock, AlertCircle, Sliders
 } from "lucide-react";
-import { CampaignDashboard } from "@/components/campaigns/CampaignDashboard";
+import CampaignDashboard from "@/components/campaigns/CampaignDashboard";
 
 interface ContactList {
   id: string;
@@ -437,7 +437,7 @@ export default function CampaignsPage() {
 
       {/* Segmented Campaigns Tab */}
       {activeTab === "segmented" && tenantId && (
-        <CampaignDashboard tenantId={tenantId} />
+        <CampaignDashboard />
       )}
 
       {/* Create Campaign Modal */}
