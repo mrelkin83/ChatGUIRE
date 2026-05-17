@@ -199,10 +199,7 @@ export default function DashboardPage() {
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <h1
-          className="text-2xl font-bold"
-          style={{ fontFamily: "var(--font-display)" }}
-        >
+        <h1 className="text-2xl font-bold">
           Hola, Admin <span className="inline-block">👋</span>
         </h1>
         <p className="text-sm text-[var(--text-secondary)] mt-1">
@@ -244,10 +241,7 @@ export default function DashboardPage() {
                   {Math.abs(kpi.change)}%
                 </span>
               </div>
-              <div
-                className="text-2xl font-bold"
-                style={{ fontFamily: "var(--font-mono)" }}
-              >
+              <div className="text-2xl font-bold font-mono">
                 {kpi.prefix}
                 <CountUp
                   end={kpi.value}

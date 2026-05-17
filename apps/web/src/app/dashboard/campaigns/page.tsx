@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useRef } from "react";
 import { API_BASE, dfetch, getTenantId } from "@/lib/api";
@@ -241,8 +241,8 @@ export default function CampaignsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold" style={{ fontFamily: "var(--font-display)" }}>Campañas</h1>
-          <p className="mt-1 text-sm text-[#8b8b9e]">Envía mensajes masivos a tus contactos</p>
+          <h1 className="text-2xl font-bold">CampaÃ±as</h1>
+          <p className="mt-1 text-sm text-[#8b8b9e]">EnvÃ­a mensajes masivos a tus contactos</p>
         </div>
         <div className="flex gap-2">
           <button onClick={() => setShowCreateList(true)} className="btn-secondary flex items-center gap-2">
@@ -251,7 +251,7 @@ export default function CampaignsPage() {
           </button>
           <button onClick={() => setShowCreateCampaign(true)} className="btn-primary flex items-center gap-2">
             <Send className="h-4 w-4" />
-            Nueva Campaña
+            Nueva CampaÃ±a
           </button>
         </div>
       </div>
@@ -265,7 +265,7 @@ export default function CampaignsPage() {
           }`}
         >
           <Send className="h-4 w-4 inline mr-2" />
-          Campañas ({campaigns.length})
+          CampaÃ±as ({campaigns.length})
         </button>
         <button
           onClick={() => setActiveTab("lists")}
@@ -294,7 +294,7 @@ export default function CampaignsPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-[#252536] text-left text-xs font-semibold uppercase tracking-wider text-[#8b8b9e]">
-                  <th className="px-6 py-3">Campaña</th>
+                  <th className="px-6 py-3">CampaÃ±a</th>
                   <th className="px-6 py-3">Lista</th>
                   <th className="px-6 py-3">Estado</th>
                   <th className="px-6 py-3">Contactos</th>
@@ -356,8 +356,8 @@ export default function CampaignsPage() {
                   <tr>
                     <td colSpan={6} className="px-6 py-12 text-center">
                       <Send className="h-10 w-10 mx-auto text-[#5a5a6e] mb-3" />
-                      <p className="text-sm text-[#8b8b9e]">No hay campañas creadas</p>
-                      <p className="text-xs text-[#5a5a6e] mt-1">Crea tu primera campaña para enviar mensajes masivos</p>
+                      <p className="text-sm text-[#8b8b9e]">No hay campaÃ±as creadas</p>
+                      <p className="text-xs text-[#5a5a6e] mt-1">Crea tu primera campaÃ±a para enviar mensajes masivos</p>
                     </td>
                   </tr>
                 )}
@@ -445,7 +445,7 @@ export default function CampaignsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="glass-card w-full max-w-lg p-6 max-h-[85vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Nueva Campaña</h3>
+              <h3 className="text-lg font-semibold">Nueva CampaÃ±a</h3>
               <button onClick={() => { setShowCreateCampaign(false); resetCampaignForm(); }} className="text-[#8b8b9e] hover:text-white">
                 <X className="h-5 w-5" />
               </button>
@@ -453,7 +453,7 @@ export default function CampaignsPage() {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm text-[#8b8b9e] mb-1.5">Nombre de campaña</label>
+                <label className="block text-sm text-[#8b8b9e] mb-1.5">Nombre de campaÃ±a</label>
                 <input
                   type="text"
                   value={campName}
@@ -485,7 +485,7 @@ export default function CampaignsPage() {
                     disabled={campMessages.length >= 5}
                     className="text-xs text-[#f59e0b] hover:underline disabled:opacity-50"
                   >
-                    + Agregar variación
+                    + Agregar variaciÃ³n
                   </button>
                 </div>
                 <div className="space-y-2">
@@ -539,7 +539,7 @@ export default function CampaignsPage() {
                     onChange={(e) => setCampRecurrence(e.target.value)}
                     className="input-field"
                   >
-                    <option value="once">Única vez</option>
+                    <option value="once">Ãšnica vez</option>
                     <option value="daily">Diaria</option>
                     <option value="weekly">Semanal</option>
                     <option value="biweekly">Quincenal</option>
@@ -558,7 +558,7 @@ export default function CampaignsPage() {
                   className="btn-primary flex items-center gap-2"
                 >
                   {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                  Crear Campaña
+                  Crear CampaÃ±a
                 </button>
               </div>
             </div>
@@ -584,12 +584,12 @@ export default function CampaignsPage() {
                   type="text"
                   value={listName}
                   onChange={(e) => setListName(e.target.value)}
-                  placeholder="Clientes VIP, Promoción verano..."
+                  placeholder="Clientes VIP, PromociÃ³n verano..."
                   className="input-field"
                 />
               </div>
               <div>
-                <label className="block text-sm text-[#8b8b9e] mb-1.5">Descripción</label>
+                <label className="block text-sm text-[#8b8b9e] mb-1.5">DescripciÃ³n</label>
                 <input
                   type="text"
                   value={listDesc}
@@ -632,7 +632,7 @@ export default function CampaignsPage() {
         <div className="fixed bottom-4 right-4 z-50 glass-card p-4 flex items-center gap-3 animate-in">
           <CheckCircle2 className="h-5 w-5 text-[#22c55e]" />
           <div>
-            <p className="text-sm font-medium">Importación exitosa</p>
+            <p className="text-sm font-medium">ImportaciÃ³n exitosa</p>
             <p className="text-xs text-[#8b8b9e]">
               {importResult.imported} importados, {importResult.skipped} omitidos
             </p>

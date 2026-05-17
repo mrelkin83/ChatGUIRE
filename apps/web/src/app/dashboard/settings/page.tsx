@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -31,43 +31,43 @@ const NAV_SECTIONS = [
 ];
 
 const BUSINESS_TYPES = [
-  { key: "restaurante", label: "Restaurante", icon: "🍽️" },
-  { key: "ropa", label: "Ropa/Moda", icon: "👗" },
-  { key: "salon", label: "Salón Belleza", icon: "💇" },
-  { key: "tecnologia", label: "Tecnología", icon: "💻" },
-  { key: "salud", label: "Salud", icon: "🏥" },
-  { key: "educacion", label: "Educación", icon: "📚" },
-  { key: "legal", label: "Legal", icon: "⚖️" },
-  { key: "inmobiliaria", label: "Inmobiliaria", icon: "🏠" },
-  { key: "automotriz", label: "Automotriz", icon: "🚗" },
-  { key: "fitness", label: "Fitness", icon: "🏋️" },
-  { key: "fotografia", label: "Fotografía", icon: "📸" },
-  { key: "eventos", label: "Eventos", icon: "🎉" },
-  { key: "alimentos", label: "Alimentos", icon: "🍔" },
-  { key: "supermercado", label: "Supermercado", icon: "🛒" },
-  { key: "farmacia", label: "Farmacia", icon: "💊" },
-  { key: "veterinaria", label: "Veterinaria", icon: "🐾" },
-  { key: "construccion", label: "Construcción", icon: "🏗️" },
-  { key: "consultoria", label: "Consultoría", icon: "💼" },
-  { key: "marketing", label: "Marketing", icon: "📈" },
-  { key: "turismo", label: "Turismo", icon: "✈️" },
+  { key: "restaurante", label: "Restaurante", icon: "ðŸ½ï¸" },
+  { key: "ropa", label: "Ropa/Moda", icon: "ðŸ‘—" },
+  { key: "salon", label: "SalÃ³n Belleza", icon: "ðŸ’‡" },
+  { key: "tecnologia", label: "TecnologÃ­a", icon: "ðŸ’»" },
+  { key: "salud", label: "Salud", icon: "ðŸ¥" },
+  { key: "educacion", label: "EducaciÃ³n", icon: "ðŸ“š" },
+  { key: "legal", label: "Legal", icon: "âš–ï¸" },
+  { key: "inmobiliaria", label: "Inmobiliaria", icon: "ðŸ " },
+  { key: "automotriz", label: "Automotriz", icon: "ðŸš—" },
+  { key: "fitness", label: "Fitness", icon: "ðŸ‹ï¸" },
+  { key: "fotografia", label: "FotografÃ­a", icon: "ðŸ“¸" },
+  { key: "eventos", label: "Eventos", icon: "ðŸŽ‰" },
+  { key: "alimentos", label: "Alimentos", icon: "ðŸ”" },
+  { key: "supermercado", label: "Supermercado", icon: "ðŸ›’" },
+  { key: "farmacia", label: "Farmacia", icon: "ðŸ’Š" },
+  { key: "veterinaria", label: "Veterinaria", icon: "ðŸ¾" },
+  { key: "construccion", label: "ConstrucciÃ³n", icon: "ðŸ—ï¸" },
+  { key: "consultoria", label: "ConsultorÃ­a", icon: "ðŸ’¼" },
+  { key: "marketing", label: "Marketing", icon: "ðŸ“ˆ" },
+  { key: "turismo", label: "Turismo", icon: "âœˆï¸" },
 ];
 
 const CAPABILITIES = [
-  { key: "delivery", label: "Delivery", desc: "Envíos a domicilio" },
+  { key: "delivery", label: "Delivery", desc: "EnvÃ­os a domicilio" },
   { key: "citas", label: "Citas", desc: "Agenda y reservas" },
-  { key: "catalogo", label: "Catálogo", desc: "Productos/servicios" },
+  { key: "catalogo", label: "CatÃ¡logo", desc: "Productos/servicios" },
   { key: "pagos_online", label: "Pagos online", desc: "Links de pago Wompi" },
   { key: "pedidos", label: "Pedidos", desc: "Carrito de compras" },
   { key: "escalamiento", label: "Escalamiento humano", desc: "Agente real disponible" },
   { key: "multi_agente", label: "Multi-agente", desc: "Varios agentes IA" },
-  { key: "campanas", label: "Campañas", desc: "Mensajes masivos" },
+  { key: "campanas", label: "CampaÃ±as", desc: "Mensajes masivos" },
 ];
 
 const DAYS = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"] as const;
 const DAY_LABELS: Record<string, string> = {
-  lunes: "Lunes", martes: "Martes", miercoles: "Miércoles",
-  jueves: "Jueves", viernes: "Viernes", sabado: "Sábado", domingo: "Domingo",
+  lunes: "Lunes", martes: "Martes", miercoles: "MiÃ©rcoles",
+  jueves: "Jueves", viernes: "Viernes", sabado: "SÃ¡bado", domingo: "Domingo",
 };
 
 interface KnowledgeEntry {
@@ -185,7 +185,7 @@ function GradientSlider({
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
     <div className="mb-6">
-      <h2 className="text-lg font-bold font-[var(--font-display)] text-[var(--text-primary)]">
+      <h2 className="text-lg font-bold text-[var(--text-primary)]">
         {children}
       </h2>
       <div className="mt-2 h-px bg-gradient-to-r from-[var(--accent-primary)] via-[var(--accent-primary)]/30 to-transparent" />
@@ -264,7 +264,7 @@ export default function SettingsPage() {
           theme: cfg.appearance?.theme || "dark",
         }));
       } catch {
-        toast.error("Error cargando configuración");
+        toast.error("Error cargando configuraciÃ³n");
       } finally {
         setLoading(false);
       }
@@ -424,7 +424,7 @@ export default function SettingsPage() {
   const renderNegocio = () => (
     <GlassCard className="p-0 overflow-hidden">
       <div className="p-6">
-        <SectionHeading>Información del negocio</SectionHeading>
+        <SectionHeading>InformaciÃ³n del negocio</SectionHeading>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div className="md:col-span-2">
             <Input label="Nombre del negocio" value={settings.name}
@@ -447,7 +447,7 @@ export default function SettingsPage() {
                 icon={<Globe className="w-4 h-4" />} />
             </div>
           </div>
-          <Input label="Teléfono" value={settings.phone}
+          <Input label="TelÃ©fono" value={settings.phone}
             onChange={(e) => update("phone", e.target.value)} placeholder="+57 300 000 0000" />
           <div className="flex flex-col gap-1.5">
             <label className="text-[13px] text-[var(--text-secondary)] font-medium">Zona horaria</label>
@@ -456,27 +456,27 @@ export default function SettingsPage() {
               onChange={(e) => update("timezone", e.target.value)}
               className="bg-[var(--bg-surface-1)] border border-[var(--border-default)] text-[var(--text-primary)] py-2.5 px-3 rounded-[var(--radius-md)] text-sm w-full transition-all focus:outline-none focus:border-[var(--accent-primary)] focus:shadow-[0_0_0_3px_var(--accent-primary-subtle)]"
             >
-              <option value="America/Bogota">Bogotá (GMT-5)</option>
-              <option value="America/Mexico_City">Ciudad de México (GMT-6)</option>
+              <option value="America/Bogota">BogotÃ¡ (GMT-5)</option>
+              <option value="America/Mexico_City">Ciudad de MÃ©xico (GMT-6)</option>
               <option value="America/Lima">Lima (GMT-5)</option>
               <option value="America/Santiago">Santiago (GMT-4)</option>
               <option value="America/Buenos_Aires">Buenos Aires (GMT-3)</option>
             </select>
           </div>
           <div className="md:col-span-2">
-            <Input label="Dirección" value={settings.address}
-              onChange={(e) => update("address", e.target.value)} placeholder="Calle 123, Bogotá" />
+            <Input label="DirecciÃ³n" value={settings.address}
+              onChange={(e) => update("address", e.target.value)} placeholder="Calle 123, BogotÃ¡" />
           </div>
           <div className="md:col-span-2 flex flex-col gap-1.5">
-            <label className="text-[13px] text-[var(--text-secondary)] font-medium">Descripción</label>
+            <label className="text-[13px] text-[var(--text-secondary)] font-medium">DescripciÃ³n</label>
             <textarea
               value={settings.description}
               onChange={(e) => update("description", e.target.value)}
-              placeholder="Describe tu negocio... La IA usa esta información."
+              placeholder="Describe tu negocio... La IA usa esta informaciÃ³n."
               rows={3}
               className="bg-[var(--bg-surface-1)] border border-[var(--border-default)] text-[var(--text-primary)] py-2.5 px-3 rounded-[var(--radius-md)] text-sm w-full transition-all focus:outline-none focus:border-[var(--accent-primary)] focus:shadow-[0_0_0_3px_var(--accent-primary-subtle)] placeholder:text-[var(--text-tertiary)] resize-none"
             />
-            <p className="text-[11px] text-[var(--text-tertiary)]">La IA usa esta descripción para responder a los clientes</p>
+            <p className="text-[11px] text-[var(--text-tertiary)]">La IA usa esta descripciÃ³n para responder a los clientes</p>
           </div>
         </div>
         <div className="flex justify-end mt-6">
@@ -491,7 +491,7 @@ export default function SettingsPage() {
   const renderActividad = () => (
     <GlassCard className="p-0 overflow-hidden">
       <div className="p-6">
-        <SectionHeading>Actividad económica</SectionHeading>
+        <SectionHeading>Actividad econÃ³mica</SectionHeading>
         <p className="text-sm text-[var(--text-tertiary)] mb-4">Selecciona el tipo de negocio</p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-8">
           {BUSINESS_TYPES.map((bt) => (
@@ -562,10 +562,10 @@ export default function SettingsPage() {
   const renderHorarios = () => (
     <GlassCard className="p-0 overflow-hidden">
       <div className="p-6">
-        <SectionHeading>Horarios de atención</SectionHeading>
+        <SectionHeading>Horarios de atenciÃ³n</SectionHeading>
         <div className="space-y-1">
           <div className="grid grid-cols-[120px_1fr_1fr_60px] gap-3 items-center px-3 pb-2">
-            <span className="text-[11px] text-[var(--text-tertiary)] font-semibold uppercase tracking-wider">Día</span>
+            <span className="text-[11px] text-[var(--text-tertiary)] font-semibold uppercase tracking-wider">DÃ­a</span>
             <span className="text-[11px] text-[var(--text-tertiary)] font-semibold uppercase tracking-wider">Apertura</span>
             <span className="text-[11px] text-[var(--text-tertiary)] font-semibold uppercase tracking-wider">Cierre</span>
             <span className="text-[11px] text-[var(--text-tertiary)] font-semibold uppercase tracking-wider text-center">Activo</span>
@@ -625,7 +625,7 @@ export default function SettingsPage() {
                   : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
               )}
             >
-              {mode === "sandbox" ? "Sandbox" : "Producción"}
+              {mode === "sandbox" ? "Sandbox" : "ProducciÃ³n"}
             </button>
           ))}
         </div>
@@ -759,7 +759,7 @@ export default function SettingsPage() {
             <textarea
               value={settings.ai_additionalInstructions}
               onChange={(e) => update("ai_additionalInstructions", e.target.value)}
-              placeholder="Ej: Solicitar cédula antes de agendar cita. Siempre saludar con el nombre del cliente..."
+              placeholder="Ej: Solicitar cÃ©dula antes de agendar cita. Siempre saludar con el nombre del cliente..."
               rows={3}
               className="bg-[var(--bg-surface-1)] border border-[var(--border-default)] text-[var(--text-primary)] py-2.5 px-3 rounded-[var(--radius-md)] text-sm w-full transition-all focus:outline-none focus:border-[var(--accent-primary)] focus:shadow-[0_0_0_3px_var(--accent-primary-subtle)] placeholder:text-[var(--text-tertiary)] resize-none"
             />
@@ -797,7 +797,7 @@ export default function SettingsPage() {
         {settings.knowledge.length === 0 ? (
           <div className="text-center py-12">
             <BookOpen className="w-10 h-10 text-[var(--text-tertiary)] mx-auto mb-3" />
-            <p className="text-sm text-[var(--text-tertiary)]">No hay entradas aún. Agrega preguntas frecuentes para tu IA.</p>
+            <p className="text-sm text-[var(--text-tertiary)]">No hay entradas aÃºn. Agrega preguntas frecuentes para tu IA.</p>
           </div>
         ) : (
           <div className="space-y-2.5">
@@ -890,7 +890,7 @@ export default function SettingsPage() {
         <div className="space-y-4">
           <Input label="Pregunta" value={entryForm.question}
             onChange={(e) => setEntryForm({ ...entryForm, question: e.target.value })}
-            placeholder="¿Cuál es el horario de atención?" />
+            placeholder="Â¿CuÃ¡l es el horario de atenciÃ³n?" />
           <div className="flex flex-col gap-1.5">
             <label className="text-[13px] text-[var(--text-secondary)] font-medium">Respuesta</label>
             <textarea
@@ -902,7 +902,7 @@ export default function SettingsPage() {
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="text-[13px] text-[var(--text-secondary)] font-medium">Categoría</label>
+            <label className="text-[13px] text-[var(--text-secondary)] font-medium">CategorÃ­a</label>
             <select
               value={entryForm.category}
               onChange={(e) => setEntryForm({ ...entryForm, category: e.target.value })}
@@ -913,7 +913,7 @@ export default function SettingsPage() {
               <option value="servicios">Servicios</option>
               <option value="horarios">Horarios</option>
               <option value="pagos">Pagos</option>
-              <option value="ubicacion">Ubicación</option>
+              <option value="ubicacion">UbicaciÃ³n</option>
             </select>
           </div>
           <div className="flex flex-col gap-1.5">
@@ -1065,8 +1065,8 @@ export default function SettingsPage() {
     <div className="flex gap-0 min-h-full -m-6">
       <nav className="hidden md:flex flex-col w-[200px] flex-shrink-0 border-r border-[var(--border-subtle)] bg-[var(--bg-surface-1)]/50 py-6 px-3 sticky top-0 self-start">
         <div className="px-3 mb-5">
-          <h1 className="text-base font-bold font-[var(--font-display)] text-[var(--text-primary)]">Ajustes</h1>
-          <p className="text-[11px] text-[var(--text-tertiary)] mt-0.5">Configuración general</p>
+          <h1 className="text-base font-bold text-[var(--text-primary)]">Ajustes</h1>
+          <p className="text-[11px] text-[var(--text-tertiary)] mt-0.5">ConfiguraciÃ³n general</p>
         </div>
         <div className="space-y-0.5">
           {NAV_SECTIONS.map((sec) => {

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { API_BASE, dfetch, getTenantId } from "@/lib/api";
@@ -168,7 +168,7 @@ export default function AIConfigPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold" style={{ fontFamily: "var(--font-display)" }}>Configuración IA</h1>
+          <h1 className="text-2xl font-bold">ConfiguraciÃ³n IA</h1>
           <p className="mt-1 text-sm text-[#8b8b9e]">Personaliza el comportamiento de tu asistente</p>
         </div>
         <button onClick={handleSave} disabled={saving} className="btn-primary flex items-center gap-2">
@@ -179,7 +179,7 @@ export default function AIConfigPage() {
 
       {saved && (
         <div className="rounded-xl border border-[#22c55e]/20 bg-[#22c55e]/5 p-3 text-sm text-[#22c55e]">
-          Configuración guardada exitosamente
+          ConfiguraciÃ³n guardada exitosamente
         </div>
       )}
 
@@ -199,7 +199,7 @@ export default function AIConfigPage() {
         </div>
 
         <div className="glass-card p-6 space-y-5">
-          <h3 className="text-lg font-semibold">Parámetros</h3>
+          <h3 className="text-lg font-semibold">ParÃ¡metros</h3>
           <div>
             <label className="mb-1.5 block text-sm font-medium text-[#8b8b9e]">Modelo LLM</label>
             <select value={model} onChange={(e) => setModel(e.target.value)} className="input-field">
@@ -328,7 +328,7 @@ export default function AIConfigPage() {
                   type="text"
                   value={newQuestion}
                   onChange={(e) => setNewQuestion(e.target.value)}
-                  placeholder="¿Cuánto cuesta una consulta general?"
+                  placeholder="Â¿CuÃ¡nto cuesta una consulta general?"
                   className="input-field"
                 />
               </div>
@@ -343,7 +343,7 @@ export default function AIConfigPage() {
                 />
               </div>
               <div>
-                <label className="form-label">Categoría</label>
+                <label className="form-label">CategorÃ­a</label>
                 <select
                   value={newCategory}
                   onChange={(e) => setNewCategory(e.target.value)}
@@ -353,8 +353,8 @@ export default function AIConfigPage() {
                   <option value="precios">Precios</option>
                   <option value="servicios">Servicios</option>
                   <option value="horarios">Horarios</option>
-                  <option value="politicas">Políticas</option>
-                  <option value="ubicacion">Ubicación</option>
+                  <option value="politicas">PolÃ­ticas</option>
+                  <option value="ubicacion">UbicaciÃ³n</option>
                 </select>
               </div>
               <div className="modal-footer">

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -35,7 +35,7 @@ const channels = [
     icon: MessageCircle,
     color: "#25D366",
     colorLight: "#25D366",
-    description: "Conecta vía Evolution API o WAHA",
+    description: "Conecta vÃ­a Evolution API o WAHA",
     statusEndpoint: "/api/channels/whatsapp/status",
     connectEndpoint: "/api/channels/whatsapp/connect",
     disconnectEndpoint: "/api/channels/whatsapp/disconnect",
@@ -81,7 +81,7 @@ interface ChannelState {
   info?: string;
 }
 
-const QR_STEPS = ["Genera QR", "Escanea", "¡Listo!"];
+const QR_STEPS = ["Genera QR", "Escanea", "Â¡Listo!"];
 
 export default function ChannelsPage() {
   const [tenantId, setTenantId] = useState("");
@@ -226,7 +226,7 @@ export default function ChannelsPage() {
 
         startQrPolling(tenantId);
       } catch {
-        setQrError("Error al conectar. Verifica que el servicio esté activo.");
+        setQrError("Error al conectar. Verifica que el servicio estÃ© activo.");
       }
       setConnecting(false);
     } else {
@@ -355,11 +355,11 @@ export default function ChannelsPage() {
         className="flex items-center justify-between"
       >
         <div>
-          <h1 className="text-2xl font-bold" style={{ fontFamily: "var(--font-display)" }}>
+          <h1 className="text-2xl font-bold">
             Canales
           </h1>
           <p className="mt-1 text-sm text-[var(--text-secondary)]">
-            Conecta tus redes sociales y canales de mensajería
+            Conecta tus redes sociales y canales de mensajerÃ­a
           </p>
         </div>
         <button
@@ -548,7 +548,7 @@ export default function ChannelsPage() {
                   </div>
                   <p className="text-lg font-bold text-[#25D366]">Conectado</p>
                   <p className="text-sm text-[var(--text-secondary)] mt-1">
-                    WhatsApp está listo para recibir mensajes
+                    WhatsApp estÃ¡ listo para recibir mensajes
                   </p>
                 </motion.div>
               ) : qrCode ? (
@@ -573,11 +573,11 @@ export default function ChannelsPage() {
                     Escanea con WhatsApp
                   </p>
                   <p className="text-[11px] text-[var(--text-tertiary)]">
-                    WhatsApp → Dispositivos vinculados → Vincular dispositivo
+                    WhatsApp â†’ Dispositivos vinculados â†’ Vincular dispositivo
                   </p>
                   <div className="mt-4 flex items-center justify-center gap-2 text-[#F59E0B]">
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    <span className="text-xs font-medium">Esperando vinculación...</span>
+                    <span className="text-xs font-medium">Esperando vinculaciÃ³n...</span>
                   </div>
                 </div>
               ) : (
@@ -585,7 +585,7 @@ export default function ChannelsPage() {
                   <div className="mx-auto mb-4 w-48 h-48 rounded-2xl border-2 border-dashed border-[var(--border-default)] flex items-center justify-center">
                     <Loader2 className="h-8 w-8 animate-spin text-[#25D366]" />
                   </div>
-                  <p className="text-sm text-[var(--text-secondary)]">Generando código QR...</p>
+                  <p className="text-sm text-[var(--text-secondary)]">Generando cÃ³digo QR...</p>
                   <p className="mt-1 text-[11px] text-[var(--text-tertiary)]">
                     Esto puede tardar unos segundos
                   </p>
@@ -629,13 +629,13 @@ export default function ChannelsPage() {
                   />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Contraseña</label>
+                  <label className="form-label">ContraseÃ±a</label>
                   <div className="relative">
                     <input
                       type={showPassword ? "text" : "password"}
                       value={igPassword}
                       onChange={(e) => setIgPassword(e.target.value)}
-                      placeholder="Tu contraseña"
+                      placeholder="Tu contraseÃ±a"
                       className="input-field pr-10"
                     />
                     <button
@@ -647,12 +647,12 @@ export default function ChannelsPage() {
                   </div>
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Código 2FA (opcional)</label>
+                  <label className="form-label">CÃ³digo 2FA (opcional)</label>
                   <input
                     type="text"
                     value={igTwoFA}
                     onChange={(e) => setIgTwoFA(e.target.value)}
-                    placeholder="Código de verificación"
+                    placeholder="CÃ³digo de verificaciÃ³n"
                     className="input-field"
                   />
                 </div>
@@ -703,7 +703,7 @@ export default function ChannelsPage() {
               <div className="space-y-4">
                 <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface-1)] p-4">
                   <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
-                    Conecta tu página de Facebook con la API de Meta. Necesitas el ID de la página y el token de acceso de página permanente.
+                    Conecta tu pÃ¡gina de Facebook con la API de Meta. Necesitas el ID de la pÃ¡gina y el token de acceso de pÃ¡gina permanente.
                   </p>
                 </div>
                 <div className="form-group">
@@ -717,7 +717,7 @@ export default function ChannelsPage() {
                   />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Access Token de Página</label>
+                  <label className="form-label">Access Token de PÃ¡gina</label>
                   <input
                     type="password"
                     value={fbAccessToken}
@@ -770,7 +770,7 @@ export default function ChannelsPage() {
               <div className="space-y-4">
                 <div className="rounded-xl border border-[var(--border-default)] bg-[var(--bg-surface-1)] p-4">
                   <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
-                    Pega las cookies de sesión de TikTok para habilitar la respuesta automática
+                    Pega las cookies de sesiÃ³n de TikTok para habilitar la respuesta automÃ¡tica
                     a comentarios en tus videos. Puedes obtenerlas desde las herramientas de
                     desarrollador de tu navegador.
                   </p>
@@ -786,7 +786,7 @@ export default function ChannelsPage() {
                   />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Cookies de sesión</label>
+                  <label className="form-label">Cookies de sesiÃ³n</label>
                   <textarea
                     value={ttCookies}
                     onChange={(e) => setTtCookies(e.target.value)}

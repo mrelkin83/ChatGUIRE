@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
@@ -124,7 +124,7 @@ export default function OrdersPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold font-[family-name:var(--font-display)]">
+          <h1 className="text-2xl font-bold">
             Pedidos
           </h1>
           <p className="mt-1 text-sm text-[var(--text-secondary)]">
@@ -193,13 +193,13 @@ export default function OrdersPage() {
           <div className="h-16 w-16 rounded-2xl bg-[var(--bg-surface-3)] flex items-center justify-center mb-4">
             <Receipt className="h-8 w-8 text-[var(--text-tertiary)]" />
           </div>
-          <h3 className="text-lg font-semibold font-[family-name:var(--font-display)] mb-1">
+          <h3 className="text-lg font-semibold mb-1">
             {search || statusFilter ? "Sin resultados" : "No hay pedidos"}
           </h3>
           <p className="text-sm text-[var(--text-secondary)]">
             {search || statusFilter
-              ? "Intenta con otros filtros de búsqueda"
-              : "Los pedidos de tus clientes aparecerán aquí"}
+              ? "Intenta con otros filtros de bÃºsqueda"
+              : "Los pedidos de tus clientes aparecerÃ¡n aquÃ­"}
           </p>
         </GlassCard>
       ) : (
@@ -219,7 +219,7 @@ export default function OrdersPage() {
                 <GlassCard className="overflow-hidden">
                   <div className="px-5 py-3 border-b border-[var(--border-subtle)] flex items-center gap-3">
                     <div className="h-2.5 w-2.5 rounded-full bg-[var(--accent-primary)]" />
-                    <h3 className="text-sm font-semibold font-[family-name:var(--font-display)]">
+                    <h3 className="text-sm font-semibold">
                       <Badge variant={config.variant} className="text-xs">{config.label}</Badge>
                     </h3>
                     <span className="text-xs text-[var(--text-tertiary)] ml-auto">

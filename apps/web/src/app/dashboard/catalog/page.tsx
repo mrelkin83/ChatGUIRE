@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
@@ -210,11 +210,11 @@ export default function CatalogPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold font-[family-name:var(--font-display)]">
-            Catálogo
+          <h1 className="text-2xl font-bold">
+            CatÃ¡logo
           </h1>
           <p className="mt-1 text-sm text-[var(--text-secondary)]">
-            {products.length} {products.length === 1 ? "elemento" : "elementos"} en el catálogo
+            {products.length} {products.length === 1 ? "elemento" : "elementos"} en el catÃ¡logo
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -262,8 +262,8 @@ export default function CatalogPage() {
           <div className="h-16 w-16 rounded-2xl bg-[var(--bg-surface-3)] flex items-center justify-center mb-4">
             <Package className="h-8 w-8 text-[var(--text-tertiary)]" />
           </div>
-          <h3 className="text-lg font-semibold font-[family-name:var(--font-display)] mb-1">
-            {search ? "Sin resultados" : "Catálogo vacío"}
+          <h3 className="text-lg font-semibold mb-1">
+            {search ? "Sin resultados" : "CatÃ¡logo vacÃ­o"}
           </h3>
           <p className="text-sm text-[var(--text-secondary)] max-w-sm mb-4">
             {search
@@ -308,7 +308,7 @@ export default function CatalogPage() {
                       className="h-full w-full object-cover rounded-t-[var(--radius-lg)]"
                     />
                   ) : (
-                    <span className="text-5xl font-bold text-white/20 font-[family-name:var(--font-display)]">
+                    <span className="text-5xl font-bold text-white/20">
                       {getInitial(product.name)}
                     </span>
                   )}
@@ -333,7 +333,7 @@ export default function CatalogPage() {
                 <div className="flex-1 p-4 flex flex-col gap-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-[var(--text-primary)] truncate font-[family-name:var(--font-display)]">
+                      <h3 className="font-semibold text-[var(--text-primary)] truncate">
                         {product.name}
                       </h3>
                       {product.description && (
@@ -417,10 +417,10 @@ export default function CatalogPage() {
 
           <div>
             <label className="text-[13px] text-[var(--text-secondary)] font-medium mb-1.5 block">
-              Descripción
+              DescripciÃ³n
             </label>
             <textarea
-              placeholder="Descripción del producto o servicio..."
+              placeholder="DescripciÃ³n del producto o servicio..."
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
               rows={3}
@@ -456,8 +456,8 @@ export default function CatalogPage() {
 
           <div className="grid gap-4 sm:grid-cols-2">
             <Input
-              label="Categoría"
-              placeholder="Ej: Electrónicos"
+              label="CategorÃ­a"
+              placeholder="Ej: ElectrÃ³nicos"
               value={form.categoryName}
               onChange={(e) => setForm({ ...form, categoryName: e.target.value })}
             />
@@ -471,7 +471,7 @@ export default function CatalogPage() {
 
           {form.type === "service" ? (
             <Input
-              label="Duración (minutos)"
+              label="DuraciÃ³n (minutos)"
               type="number"
               placeholder="30"
               value={form.duration}

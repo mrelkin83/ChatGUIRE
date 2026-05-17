@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { API_BASE, dfetch, getTenantId } from '@/lib/api';
@@ -65,7 +65,7 @@ export default function CampaignDashboard() {
   const fetchCampaigns = useCallback(async (tid: string) => {
     try {
       const res = await dfetch(`${API_BASE}/api/campaigns-adv/${tid}`);
-      if (!res.ok) throw new Error('Error al cargar campañas');
+      if (!res.ok) throw new Error('Error al cargar campaÃ±as');
       const data = await res.json();
       setCampaigns(data.data || []);
     } catch (err) {
@@ -85,7 +85,7 @@ export default function CampaignDashboard() {
     }
   }, [fetchCampaigns]);
 
-  // Polling cada 10s si hay campañas activas
+  // Polling cada 10s si hay campaÃ±as activas
   useEffect(() => {
     if (!tenantId) return;
     const hasActive = campaigns.some((c) => ['sending', 'scheduled'].includes(c.status));
@@ -104,7 +104,7 @@ export default function CampaignDashboard() {
       });
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.error || 'Error al crear campaña');
+        throw new Error(err.error || 'Error al crear campaÃ±a');
       }
       setShowForm(false);
       await fetchCampaigns(tenantId);
@@ -118,7 +118,7 @@ export default function CampaignDashboard() {
   const handleAction = async (id: string, action: 'pause' | 'resume' | 'cancel') => {
     try {
       const res = await dfetch(`${API_BASE}/api/campaigns-adv/${tenantId}/${id}/${action}`, { method: 'POST' });
-      if (!res.ok) throw new Error('Acción fallida');
+      if (!res.ok) throw new Error('AcciÃ³n fallida');
       await fetchCampaigns(tenantId);
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Error');
@@ -164,11 +164,11 @@ export default function CampaignDashboard() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold" style={{ fontFamily: 'var(--font-display)' }}>
-            Campañas segmentadas
+          <h2 className="text-xl font-bold">
+            CampaÃ±as segmentadas
           </h2>
           <p className="text-sm mt-0.5" style={{ color: 'var(--text-secondary)' }}>
-            Envía mensajes a segmentos dinámicos de clientes
+            EnvÃ­a mensajes a segmentos dinÃ¡micos de clientes
           </p>
         </div>
         <button
@@ -176,7 +176,7 @@ export default function CampaignDashboard() {
           className="btn-primary flex items-center gap-2 text-sm"
         >
           <Send className="h-4 w-4" />
-          Nueva campaña
+          Nueva campaÃ±a
         </button>
       </div>
 
@@ -229,7 +229,7 @@ export default function CampaignDashboard() {
                         background: c.channel === 'whatsapp' ? '#22c55e20' : '#8b5cf620',
                         color: c.channel === 'whatsapp' ? '#22c55e' : '#8b5cf6',
                       }}>
-                      {c.channel === 'whatsapp' ? '💬 WhatsApp' : '📧 Email'}
+                      {c.channel === 'whatsapp' ? 'ðŸ’¬ WhatsApp' : 'ðŸ“§ Email'}
                     </span>
                   </td>
                   <td className="px-5 py-3">
@@ -259,7 +259,7 @@ export default function CampaignDashboard() {
                         </div>
                       </div>
                     ) : (
-                      <span style={{ color: 'var(--text-tertiary)' }}>—</span>
+                      <span style={{ color: 'var(--text-tertiary)' }}>â€”</span>
                     )}
                   </td>
                   <td className="px-5 py-3" onClick={(e) => e.stopPropagation()}>
@@ -311,10 +311,10 @@ export default function CampaignDashboard() {
                   <td colSpan={6} className="px-5 py-12 text-center">
                     <BarChart3 className="h-10 w-10 mx-auto mb-3" style={{ color: 'var(--text-tertiary)' }} />
                     <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                      No hay campañas segmentadas
+                      No hay campaÃ±as segmentadas
                     </p>
                     <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
-                      Crea una campaña para enviar mensajes a clientes por segmento
+                      Crea una campaÃ±a para enviar mensajes a clientes por segmento
                     </p>
                   </td>
                 </tr>
@@ -344,7 +344,7 @@ export default function CampaignDashboard() {
   );
 }
 
-// ─── Create Modal ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ Create Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function CreateCampaignModal({
   onClose,
@@ -374,7 +374,7 @@ function CreateCampaignModal({
       <div className="glass-card w-full max-w-lg mx-4 p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-5">
           <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
-            Nueva campaña segmentada
+            Nueva campaÃ±a segmentada
           </h3>
           <button onClick={onClose} style={{ color: 'var(--text-tertiary)' }}>
             <X className="h-5 w-5" />
@@ -407,7 +407,7 @@ function CreateCampaignModal({
               </select>
             </div>
             <div>
-              <label className="block text-sm mb-1.5" style={{ color: 'var(--text-secondary)' }}>Programación</label>
+              <label className="block text-sm mb-1.5" style={{ color: 'var(--text-secondary)' }}>ProgramaciÃ³n</label>
               <select
                 value={form.schedule.type}
                 onChange={(e) => setForm({ ...form, schedule: { type: e.target.value as any } })}
@@ -462,7 +462,7 @@ function CreateCampaignModal({
               />
             </div>
             <div>
-              <label className="block text-sm mb-1.5" style={{ color: 'var(--text-secondary)' }}>Límite diario</label>
+              <label className="block text-sm mb-1.5" style={{ color: 'var(--text-secondary)' }}>LÃ­mite diario</label>
               <input
                 type="number"
                 min={1}
@@ -496,7 +496,7 @@ function CreateCampaignModal({
               className="btn-primary flex items-center gap-2"
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-              Crear campaña
+              Crear campaÃ±a
             </button>
           </div>
         </form>
@@ -505,7 +505,7 @@ function CreateCampaignModal({
   );
 }
 
-// ─── Detail Modal ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ Detail Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function CampaignDetailModal({ campaign, onClose }: { campaign: CampaignAdv; onClose: () => void }) {
   const m = campaign.metrics;
@@ -524,7 +524,7 @@ function CampaignDetailModal({ campaign, onClose }: { campaign: CampaignAdv; onC
               <div className="grid grid-cols-3 gap-2">
                 <MetricBox label="Enviados" value={m.sent} color="#3b82f6" />
                 <MetricBox label="Entregados" value={m.delivered} color="#22c55e" />
-                <MetricBox label="Leídos" value={m.read} color="#8b5cf6" />
+                <MetricBox label="LeÃ­dos" value={m.read} color="#8b5cf6" />
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <MetricBox label="Respondidos" value={m.replied} color="#f59e0b" />
@@ -545,7 +545,7 @@ function CampaignDetailModal({ campaign, onClose }: { campaign: CampaignAdv; onC
             </>
           ) : (
             <p className="text-sm text-center py-4" style={{ color: 'var(--text-tertiary)' }}>
-              Métricas no disponibles
+              MÃ©tricas no disponibles
             </p>
           )}
         </div>

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useState, useEffect } from "react";
 import { Plus, Trash2, Loader2, X } from "lucide-react";
 import { API_BASE, saFetch } from "@/lib/api";
@@ -27,7 +27,7 @@ export default function SAPlansPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-[#8b5cf6]" style={{ fontFamily:"var(--font-display)" }}>Planes</h1>
+        <h1 className="text-xl font-bold text-[#8b5cf6]">Planes</h1>
         <button onClick={()=>setShowCreate(true)} className="btn-primary bg-gradient-to-r from-[#8b5cf6] to-[#ec4899] text-white text-sm">+ Nuevo Plan</button>
       </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -40,7 +40,7 @@ export default function SAPlansPage() {
             <p className="text-2xl font-bold text-[#8b5cf6]">${Number(p.priceCop).toLocaleString("es-CO")}</p>
             <p className="text-xs text-[#8b8b9e] mt-1 capitalize">{p.billingCycle}</p>
             <div className="mt-3 space-y-1">
-              {(p.features as string[])?.map((f,i) => <p key={i} className="text-xs text-[#8b8b9e]">• {f}</p>)}
+              {(p.features as string[])?.map((f,i) => <p key={i} className="text-xs text-[#8b8b9e]">â€¢ {f}</p>)}
             </div>
           </div>
         ))}
@@ -51,10 +51,10 @@ export default function SAPlansPage() {
           <div className="glass-card w-full max-w-sm p-6">
             <div className="flex items-center justify-between mb-4"><h3 className="text-lg font-semibold">Nuevo Plan</h3><button onClick={()=>setShowCreate(false)} className="text-[#8b8b9e]"><X className="h-5 w-5"/></button></div>
             <div className="space-y-4">
-              <div><label className="block text-sm text-[#8b8b9e] mb-1.5">Nombre</label><input type="text" value={name} onChange={e=>setName(e.target.value)} className="input-field" placeholder="Plan Básico"/></div>
+              <div><label className="block text-sm text-[#8b8b9e] mb-1.5">Nombre</label><input type="text" value={name} onChange={e=>setName(e.target.value)} className="input-field" placeholder="Plan BÃ¡sico"/></div>
               <div><label className="block text-sm text-[#8b8b9e] mb-1.5">Slug</label><input type="text" value={slug} onChange={e=>setSlug(e.target.value)} className="input-field" placeholder="plan-basico"/></div>
               <div><label className="block text-sm text-[#8b8b9e] mb-1.5">Precio COP</label><input type="number" value={price} onChange={e=>setPrice(Number(e.target.value))} className="input-field"/></div>
-              <div><label className="block text-sm text-[#8b8b9e] mb-1.5">Límites (JSON)</label><textarea value={limits} onChange={e=>setLimits(e.target.value)} rows={2} className="input-field resize-none text-xs font-mono"/></div>
+              <div><label className="block text-sm text-[#8b8b9e] mb-1.5">LÃ­mites (JSON)</label><textarea value={limits} onChange={e=>setLimits(e.target.value)} rows={2} className="input-field resize-none text-xs font-mono"/></div>
               <div><label className="block text-sm text-[#8b8b9e] mb-1.5">Features (JSON array)</label><textarea value={features} onChange={e=>setFeatures(e.target.value)} rows={2} className="input-field resize-none text-xs font-mono"/></div>
               <div className="flex justify-end gap-3 pt-2">
                 <button onClick={()=>setShowCreate(false)} className="btn-secondary">Cancelar</button>

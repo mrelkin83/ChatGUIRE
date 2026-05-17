@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
@@ -34,8 +34,8 @@ const CHANNEL_NAMES: Record<string, string> = {
 
 const PERIODS = [
   { key: "today", label: "Hoy" },
-  { key: "7d", label: "7 días" },
-  { key: "30d", label: "30 días" },
+  { key: "7d", label: "7 dÃ­as" },
+  { key: "30d", label: "30 dÃ­as" },
   { key: "month", label: "Este mes" },
 ];
 
@@ -79,7 +79,7 @@ const CustomTooltip = ({ active, payload, label }: {
   return (
     <div className="px-4 py-3 rounded-[var(--radius-md)] shadow-lg"
       style={{ background: "var(--bg-surface-2)", border: "1px solid var(--border-default)" }}>
-      <p className="text-sm font-medium mb-1.5" style={{ fontFamily: "var(--font-display)", color: "var(--text-primary)" }}>
+      <p className="text-sm font-medium mb-1.5" style={{ color: "var(--text-primary)" }}>
         {label}
       </p>
       {payload.map((entry, i) => (
@@ -118,7 +118,7 @@ export default function AnalyticsPage() {
     dfetch(`${API_BASE}/api/analytics/${tenantId}`)
       .then((r) => r.json())
       .then((d) => { if (d.error) setError(d.error); else setData(d); })
-      .catch(() => setError("Error al cargar analíticas"))
+      .catch(() => setError("Error al cargar analÃ­ticas"))
       .finally(() => setLoading(false));
   }, []);
 
@@ -191,8 +191,8 @@ export default function AnalyticsPage() {
       channel,
       conversations: stats.conversations,
       messages: stats.messages,
-      avgResponse: "—",
-      satisfaction: "—",
+      avgResponse: "â€”",
+      satisfaction: "â€”",
     }));
   }, [data]);
 
@@ -202,7 +202,7 @@ export default function AnalyticsPage() {
         <div className="h-16 w-16 rounded-2xl flex items-center justify-center" style={{ background: "var(--bg-surface-2)" }}>
           <BarChart3 className="h-8 w-8" style={{ color: "var(--text-tertiary)" }} />
         </div>
-        <p className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>Error al cargar analíticas</p>
+        <p className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>Error al cargar analÃ­ticas</p>
         <button onClick={() => { setError(null); setLoading(true); window.location.reload(); }} className="btn-primary text-xs">Reintentar</button>
       </div>
     );
@@ -233,8 +233,8 @@ export default function AnalyticsPage() {
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
         className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold" style={{ fontFamily: "var(--font-display)" }}>Analytics</h1>
-          <p className="text-sm text-[var(--text-secondary)] mt-1">Métricas y rendimiento de tus canales</p>
+          <h1 className="text-2xl font-bold">Analytics</h1>
+          <p className="text-sm text-[var(--text-secondary)] mt-1">MÃ©tricas y rendimiento de tus canales</p>
         </div>
         <div className="flex gap-1 p-1 rounded-[var(--radius-md)]" style={{ background: "var(--bg-surface-2)" }}>
           {PERIODS.map((p) => (
@@ -312,7 +312,7 @@ export default function AnalyticsPage() {
 
         <motion.div variants={staggerItem}>
           <GlassCard className="p-5">
-            <h3 className="text-sm font-semibold mb-4" style={{ color: "var(--text-secondary)" }}>Distribución por canal</h3>
+            <h3 className="text-sm font-semibold mb-4" style={{ color: "var(--text-secondary)" }}>DistribuciÃ³n por canal</h3>
             <ResponsiveContainer width="100%" height={280}>
               <PieChart>
                 <Pie data={pieData} cx="50%" cy="50%" innerRadius={65} outerRadius={110} paddingAngle={3} dataKey="value" stroke="none">

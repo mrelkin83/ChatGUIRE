@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
@@ -39,7 +39,7 @@ export function Modal({ open, onClose, title, children, className, maxWidth = "m
           >
             {title && (
               <div className="flex items-center justify-between mb-5 pb-4 border-b border-[var(--border-subtle)]">
-                <h3 className="text-lg font-bold font-[var(--font-display)]">{title}</h3>
+                <h3 className="text-lg font-bold">{title}</h3>
                 <button onClick={onClose} className="text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors">
                   <X className="h-5 w-5" />
                 </button>

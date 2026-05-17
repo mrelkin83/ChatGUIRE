@@ -48,7 +48,7 @@ export function Sidebar() {
       className="flex flex-col h-screen bg-[var(--bg-surface-1)] border-r border-[var(--border-subtle)] flex-shrink-0 overflow-hidden"
     >
       <div className="flex items-center h-16 px-4 border-b border-[var(--border-subtle)] flex-shrink-0">
-        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--gradient-primary)] text-white font-bold text-lg flex-shrink-0">
+        <div className="flex h-11 w-11 items-center justify-center rounded-xl text-white font-bold text-lg flex-shrink-0" style={{ background: "var(--gradient-primary)" }}>
           C
         </div>
         <AnimatePresence>
@@ -58,7 +58,7 @@ export function Sidebar() {
               animate={{ opacity: 1, width: "auto" }}
               exit={{ opacity: 0, width: 0 }}
               transition={{ duration: 0.2 }}
-              className="ml-3 text-lg font-bold font-[var(--font-display)] whitespace-nowrap overflow-hidden"
+              className="ml-3 text-lg font-bold whitespace-nowrap overflow-hidden"
             >
               ChatG<span className="gradient-text">Ü</span>IRE
             </motion.span>
@@ -161,7 +161,7 @@ export function Sidebar() {
 
       <div className="border-t border-[var(--border-subtle)] p-3 flex-shrink-0">
         <div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-full bg-[var(--gradient-primary)] flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+          <div className="h-9 w-9 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0" style={{ background: "var(--accent-primary)" }}>
             A
           </div>
           <AnimatePresence>

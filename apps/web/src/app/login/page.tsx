@@ -64,10 +64,10 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-[var(--bg-root,#07070a)] px-4">
       <div className="glass-card w-full max-w-sm p-8">
         <div className="text-center mb-8">
-          <div className="flex h-14 w-14 mx-auto items-center justify-center rounded-2xl bg-gradient-to-br from-[#6366f1] to-[#8b5cf6] mb-4">
+          <div className="flex h-14 w-14 mx-auto items-center justify-center rounded-xl mb-4" style={{ background: "var(--gradient-primary)" }}>
             <Zap className="h-7 w-7 text-white" />
           </div>
-          <h1 className="text-xl font-bold" style={{ fontFamily: "var(--font-display)" }}>
+          <h1 className="text-xl font-bold">
             ChatGÜIRE
           </h1>
           <p className="text-sm text-[var(--text-secondary)] mt-1">

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useState, useEffect } from "react";
 import { Server, Cpu, HardDrive, MemoryStick } from "lucide-react";
 import { API_BASE, saFetch } from "@/lib/api";
@@ -16,7 +16,7 @@ export default function SAMonitorPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-bold text-[#8b5cf6]" style={{ fontFamily: "var(--font-display)" }}>Monitor VPS</h1>
+      <h1 className="text-xl font-bold text-[#8b5cf6]">Monitor VPS</h1>
 
       <div className="grid gap-4 md:grid-cols-2">
         <div className="glass-card p-5">

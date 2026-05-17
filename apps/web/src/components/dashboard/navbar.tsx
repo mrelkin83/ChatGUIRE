@@ -64,7 +64,7 @@ export function Navbar() {
           <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-[var(--accent-danger)]" />
         </button>
 
-        <div className="h-8 w-8 rounded-full bg-[var(--gradient-primary)] flex items-center justify-center text-white font-bold text-xs">
+        <div className="h-8 w-8 rounded-full flex items-center justify-center text-white font-bold text-xs" style={{ background: "var(--accent-primary)" }}>
           A
         </div>
       </div>

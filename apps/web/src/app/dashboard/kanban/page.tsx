@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { API_BASE, dfetch, getTenantId } from "@/lib/api";
@@ -155,7 +155,7 @@ export default function KanbanPage() {
     <div className="h-[calc(100vh-140px)] flex flex-col">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-2xl font-bold" style={{ fontFamily: "var(--font-display)" }}>Kanban</h1>
+          <h1 className="text-2xl font-bold">Kanban</h1>
           <p className="mt-1 text-sm text-[#8b8b9e]">Gestiona conversaciones por etapa</p>
         </div>
         <div className="flex gap-2">
@@ -351,7 +351,7 @@ export default function KanbanPage() {
                   type="text"
                   value={newColName}
                   onChange={(e) => setNewColName(e.target.value)}
-                  placeholder="Nuevo, En conversación, Cerrado..."
+                  placeholder="Nuevo, En conversaciÃ³n, Cerrado..."
                   className="input-field"
                 />
               </div>

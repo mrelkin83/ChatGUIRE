@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useState, useEffect } from "react";
 import { Gift, Clock } from "lucide-react";
 import { API_BASE, saFetch } from "@/lib/api";
@@ -16,7 +16,7 @@ export default function SADemosPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-bold text-[#8b5cf6]" style={{ fontFamily:"var(--font-display)" }}>Cuentas Demo</h1>
+      <h1 className="text-xl font-bold text-[#8b5cf6]">Cuentas Demo</h1>
       <div className="grid gap-4">
         {tenants.map(t => (
           <div key={t.id} className="glass-card p-5 flex items-center justify-between">

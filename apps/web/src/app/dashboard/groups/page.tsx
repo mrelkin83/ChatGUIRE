@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
@@ -123,11 +123,11 @@ export default function GroupsPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold font-[family-name:var(--font-display)]">
+          <h1 className="text-2xl font-bold">
             Grupos WhatsApp
           </h1>
           <p className="mt-1 text-sm text-[var(--text-secondary)]">
-            Gestiona y envía mensajes a grupos de WhatsApp
+            Gestiona y envÃ­a mensajes a grupos de WhatsApp
           </p>
         </div>
         <button
@@ -147,11 +147,11 @@ export default function GroupsPage() {
               <WifiOff className="h-5 w-5 text-[var(--accent-amber)]" />
             </div>
             <div>
-              <h3 className="font-semibold text-[var(--accent-amber)] font-[family-name:var(--font-display)]">
-                WAHA no está disponible
+              <h3 className="font-semibold text-[var(--accent-amber)]">
+                WAHA no estÃ¡ disponible
               </h3>
               <p className="text-sm text-[var(--text-secondary)] mt-1">
-                Los grupos de WhatsApp requieren el servicio WAHA activo. Inícialo con
+                Los grupos de WhatsApp requieren el servicio WAHA activo. InÃ­cialo con
               </p>
               <code className="inline-block mt-1.5 px-2 py-1 bg-[var(--bg-surface-3)] rounded text-xs text-[var(--accent-amber)] font-[family-name:var(--font-mono)]">
                 docker compose up waha
@@ -177,13 +177,13 @@ export default function GroupsPage() {
           <div className="h-16 w-16 rounded-2xl bg-[var(--bg-surface-3)] flex items-center justify-center mb-4">
             <Users className="h-8 w-8 text-[var(--text-tertiary)]" />
           </div>
-          <h3 className="text-lg font-semibold font-[family-name:var(--font-display)] mb-1">
+          <h3 className="text-lg font-semibold mb-1">
             {search ? "Sin resultados" : "No se encontraron grupos"}
           </h3>
           <p className="text-sm text-[var(--text-secondary)] max-w-sm">
             {search
               ? `No hay grupos que coincidan con "${search}"`
-              : "Asegúrate de que tu WhatsApp esté en los grupos y la sesión esté activa"}
+              : "AsegÃºrate de que tu WhatsApp estÃ© en los grupos y la sesiÃ³n estÃ© activa"}
           </p>
         </GlassCard>
       ) : (
@@ -204,7 +204,7 @@ export default function GroupsPage() {
                     <Users className="h-5 w-5 text-[var(--accent-success)]" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-sm font-[family-name:var(--font-display)] truncate">
+                    <h3 className="font-semibold text-sm truncate">
                       {group.name}
                     </h3>
                     {group.description && (

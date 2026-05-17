@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import {
@@ -83,22 +83,22 @@ const STATUS_CONFIG: Record<DeliveryStatus, { label: string; variant: "amber" | 
 const DEMO_DELIVERIES: Delivery[] = [
   {
     id: "del_001",
-    customerName: "María García",
+    customerName: "MarÃ­a GarcÃ­a",
     customerPhone: "+57 310 123 4567",
-    address: "Cra 45 #23-12, Medellín",
+    address: "Cra 45 #23-12, MedellÃ­n",
     orderId: "PED-2024-0089",
     status: "in_transit",
     assignedTo: "agent_1",
-    assignedName: "Carlos Pérez",
-    notes: "Entregar en portería, tocar el timbre",
+    assignedName: "Carlos PÃ©rez",
+    notes: "Entregar en porterÃ­a, tocar el timbre",
     createdAt: new Date(Date.now() - 30 * 60000).toISOString(),
     updatedAt: new Date(Date.now() - 5 * 60000).toISOString(),
   },
   {
     id: "del_002",
-    customerName: "Juan López",
+    customerName: "Juan LÃ³pez",
     customerPhone: "+57 315 987 6543",
-    address: "Cl 80 #12-45, Apto 502, Bogotá",
+    address: "Cl 80 #12-45, Apto 502, BogotÃ¡",
     orderId: "PED-2024-0088",
     status: "pending",
     assignedTo: null,
@@ -109,14 +109,14 @@ const DEMO_DELIVERIES: Delivery[] = [
   },
   {
     id: "del_003",
-    customerName: "Ana Martínez",
+    customerName: "Ana MartÃ­nez",
     customerPhone: "+57 320 456 7890",
     address: "Av. Regional #45-67, Barranquilla",
     orderId: "PED-2024-0087",
     status: "delivered",
     assignedTo: "agent_2",
     assignedName: "Diana Ruiz",
-    notes: "Entregado en recepción",
+    notes: "Entregado en recepciÃ³n",
     createdAt: new Date(Date.now() - 120 * 60000).toISOString(),
     updatedAt: new Date(Date.now() - 60 * 60000).toISOString(),
   },
@@ -128,29 +128,29 @@ const DEMO_DELIVERIES: Delivery[] = [
     orderId: "PED-2024-0086",
     status: "assigned",
     assignedTo: "agent_1",
-    assignedName: "Carlos Pérez",
+    assignedName: "Carlos PÃ©rez",
     notes: "Llamar antes de llegar",
     createdAt: new Date(Date.now() - 45 * 60000).toISOString(),
     updatedAt: new Date(Date.now() - 20 * 60000).toISOString(),
   },
   {
     id: "del_005",
-    customerName: "Laura Jiménez",
+    customerName: "Laura JimÃ©nez",
     customerPhone: "+57 318 876 5432",
     address: "Cra 30 #15-78, Cartagena",
     orderId: "PED-2024-0085",
     status: "cancelled",
     assignedTo: null,
     assignedName: null,
-    notes: "Cliente canceló el pedido",
+    notes: "Cliente cancelÃ³ el pedido",
     createdAt: new Date(Date.now() - 180 * 60000).toISOString(),
     updatedAt: new Date(Date.now() - 170 * 60000).toISOString(),
   },
   {
     id: "del_006",
-    customerName: "Sofía Torres",
+    customerName: "SofÃ­a Torres",
     customerPhone: "+57 312 345 6789",
-    address: "Cra 55 #80-32, Medellín",
+    address: "Cra 55 #80-32, MedellÃ­n",
     orderId: "PED-2024-0084",
     status: "delivered",
     assignedTo: "agent_2",
@@ -162,9 +162,9 @@ const DEMO_DELIVERIES: Delivery[] = [
 ];
 
 const DEMO_PEOPLE: DeliveryPerson[] = [
-  { id: "agent_1", name: "Carlos Pérez", phone: "+57 311 111 2222", status: "busy" },
+  { id: "agent_1", name: "Carlos PÃ©rez", phone: "+57 311 111 2222", status: "busy" },
   { id: "agent_2", name: "Diana Ruiz", phone: "+57 311 333 4444", status: "available" },
-  { id: "agent_3", name: "Miguel Ángel", phone: "+57 311 555 6666", status: "available" },
+  { id: "agent_3", name: "Miguel Ãngel", phone: "+57 311 555 6666", status: "available" },
 ];
 
 const staggerContainer: Variants = {
@@ -292,7 +292,7 @@ export default function DeliveriesPage() {
 
   const handleCreateDelivery = async () => {
     if (!newCustomer || !newAddress) {
-      toast.error("Nombre del cliente y dirección son requeridos");
+      toast.error("Nombre del cliente y direcciÃ³n son requeridos");
       return;
     }
     setSaving(true);
@@ -370,7 +370,7 @@ export default function DeliveriesPage() {
         <div className="flex items-center gap-3">
           <h1
             className="text-2xl font-bold"
-            style={{ fontFamily: "var(--font-display)" }}
+           
           >
             Domicilios
           </h1>
@@ -399,7 +399,7 @@ export default function DeliveriesPage() {
           />
           <input
             type="text"
-            placeholder="Buscar por cliente, dirección, pedido..."
+            placeholder="Buscar por cliente, direcciÃ³n, pedido..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="input-field pl-10 text-sm"
@@ -621,7 +621,7 @@ export default function DeliveriesPage() {
                 Sin domicilios
               </p>
               <p className="text-xs text-[var(--text-tertiary)] mt-1">
-                {search ? "No hay resultados para esta búsqueda" : `No hay domicilios ${activeTab !== "all" ? STATUS_TABS.find((t) => t.id === activeTab)?.label.toLowerCase() : ""}`}
+                {search ? "No hay resultados para esta bÃºsqueda" : `No hay domicilios ${activeTab !== "all" ? STATUS_TABS.find((t) => t.id === activeTab)?.label.toLowerCase() : ""}`}
               </p>
             </motion.div>
           )}
@@ -643,17 +643,17 @@ export default function DeliveriesPage() {
             icon={<User className="h-4 w-4" />}
           />
           <Input
-            label="Teléfono"
+            label="TelÃ©fono"
             value={newPhone}
             onChange={(e) => setNewPhone(e.target.value)}
             placeholder="+57 300 123 4567"
             icon={<Phone className="h-4 w-4" />}
           />
           <Input
-            label="Dirección"
+            label="DirecciÃ³n"
             value={newAddress}
             onChange={(e) => setNewAddress(e.target.value)}
-            placeholder="Cra 12 #34-56, Bogotá"
+            placeholder="Cra 12 #34-56, BogotÃ¡"
             icon={<MapPin className="h-4 w-4" />}
           />
           <Input

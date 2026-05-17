@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -27,10 +27,10 @@ export default function SuperAdminLogin() {
         localStorage.setItem("superadmin_user", JSON.stringify(data.user));
         router.push("/PanelSaas");
       } else {
-        setError(data.error || "Credenciales inválidas");
+        setError(data.error || "Credenciales invÃ¡lidas");
       }
     } catch {
-      setError("Error de conexión");
+      setError("Error de conexiÃ³n");
     }
     setLoading(false);
   };
@@ -42,7 +42,7 @@ export default function SuperAdminLogin() {
           <div className="flex h-14 w-14 mx-auto items-center justify-center rounded-2xl bg-gradient-to-br from-[#8b5cf6] to-[#ec4899] mb-4">
             <Zap className="h-7 w-7 text-white" />
           </div>
-          <h1 className="text-xl font-bold text-[#8b5cf6]" style={{ fontFamily: "var(--font-display)" }}>Panel SaaS</h1>
+          <h1 className="text-xl font-bold text-[#8b5cf6]">Panel SaaS</h1>
           <p className="text-sm text-[#8b8b9e] mt-1">SuperAdmin</p>
         </div>
 
@@ -55,7 +55,7 @@ export default function SuperAdminLogin() {
           </div>
           <div>
             <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
-              placeholder="Contraseña" className="input-field"
+              placeholder="ContraseÃ±a" className="input-field"
               onKeyDown={(e) => e.key === "Enter" && handleLogin()}
             />
           </div>

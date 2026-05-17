@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
@@ -38,7 +38,7 @@ const API = `${API_BASE}/api`;
 
 const categoryConfig: Record<string, { label: string; icon: any; desc: string }> = {
   llm: { label: "LLM / IA", icon: BrainCircuit, desc: "Modelos de lenguaje e inteligencia artificial" },
-  automation: { label: "Automatización", icon: Workflow, desc: "Webhooks, n8n y servicios de automatización" },
+  automation: { label: "AutomatizaciÃ³n", icon: Workflow, desc: "Webhooks, n8n y servicios de automatizaciÃ³n" },
   crm: { label: "CRM / Soporte", icon: MessageCircle, desc: "Integraciones con CRMs y plataformas de soporte" },
 };
 
@@ -111,10 +111,10 @@ export default function IntegrationsPage() {
         }
         return [...prev, result];
       });
-      toast.success("Integración guardada");
+      toast.success("IntegraciÃ³n guardada");
       setShowModal(false);
     } catch {
-      toast.error("Error al guardar integración");
+      toast.error("Error al guardar integraciÃ³n");
     }
     setSaving(false);
   };
@@ -126,9 +126,9 @@ export default function IntegrationsPage() {
       });
       if (!res.ok) throw new Error();
       setIntegrations(integrations.filter((i) => i.provider !== provider));
-      toast.success("Integración removida");
+      toast.success("IntegraciÃ³n removida");
     } catch {
-      toast.error("Error al remover integración");
+      toast.error("Error al remover integraciÃ³n");
     }
   };
 
@@ -138,16 +138,16 @@ export default function IntegrationsPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold font-[family-name:var(--font-display)]">
+          <h1 className="text-2xl font-bold">
             Integraciones
           </h1>
           <p className="mt-1 text-sm text-[var(--text-secondary)]">
-            Conecta servicios externos a ChatGÜIRE
+            Conecta servicios externos a ChatGÃœIRE
           </p>
         </div>
         <div className="flex items-center gap-2 text-xs text-[var(--text-tertiary)]">
           <Plug className="h-4 w-4" />
-          {integrations.filter((i) => i.isActive).length} conectadas ·{" "}
+          {integrations.filter((i) => i.isActive).length} conectadas Â·{" "}
           {Object.keys(specs).length} disponibles
         </div>
       </div>
@@ -171,7 +171,7 @@ export default function IntegrationsPage() {
                 <cat.icon className="h-4 w-4 text-[var(--accent-primary)]" />
               </div>
               <div>
-                <h3 className="font-semibold font-[family-name:var(--font-display)]">
+                <h3 className="font-semibold">
                   {cat.label}
                 </h3>
                 <p className="text-xs text-[var(--text-tertiary)]">{cat.desc}</p>
@@ -205,7 +205,7 @@ export default function IntegrationsPage() {
                           </div>
                           <div>
                             <div className="flex items-center gap-2">
-                              <h4 className="font-semibold text-sm font-[family-name:var(--font-display)]">
+                              <h4 className="font-semibold text-sm">
                                 {spec.label}
                               </h4>
                               {integration?.isPrimary && (
@@ -219,7 +219,7 @@ export default function IntegrationsPage() {
                                   Conectado
                                   {integration?.config?.model && (
                                     <span className="text-[var(--text-tertiary)]">
-                                      · {integration.config.model}
+                                      Â· {integration.config.model}
                                     </span>
                                   )}
                                 </span>
@@ -284,7 +284,7 @@ export default function IntegrationsPage() {
             <div className="flex items-center justify-between mb-5 pb-4 border-b border-[var(--border-subtle)]">
               <div className="flex items-center gap-3">
                 <span className="text-xl">{specs[selectedProvider].icon}</span>
-                <h3 className="text-lg font-bold font-[family-name:var(--font-display)]">
+                <h3 className="text-lg font-bold">
                   {specs[selectedProvider].label}
                 </h3>
               </div>

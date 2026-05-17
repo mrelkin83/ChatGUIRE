@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
@@ -175,7 +175,7 @@ export default function InboxPage() {
     }
   }, [fetchData]);
 
-  // SSE para actualizaciones en tiempo real — fallback a polling cada 30s
+  // SSE para actualizaciones en tiempo real â€” fallback a polling cada 30s
   useInboxSSE({
     onMessage: (msg) => {
       if (!msg.conversationId) return;
@@ -332,7 +332,7 @@ export default function InboxPage() {
             <div className="flex items-center gap-3">
               <h2
                 className="text-xl font-bold tracking-tight"
-                style={{ fontFamily: "var(--font-display)" }}
+               
               >
                 Inbox
               </h2>
@@ -363,7 +363,7 @@ export default function InboxPage() {
             />
             <input
               type="text"
-              placeholder="Buscar conversación..."
+              placeholder="Buscar conversaciÃ³n..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="input-field pl-10 text-sm"
@@ -545,7 +545,7 @@ export default function InboxPage() {
                   No hay conversaciones
                 </p>
                 <p className="mt-1 text-xs" style={{ color: "var(--text-tertiary)" }}>
-                  {search ? "Intenta con otra búsqueda" : "Las nuevas conversaciones aparecerán aquí"}
+                  {search ? "Intenta con otra bÃºsqueda" : "Las nuevas conversaciones aparecerÃ¡n aquÃ­"}
                 </p>
               </motion.div>
             )}
@@ -642,7 +642,7 @@ export default function InboxPage() {
                   onClick={handleClose}
                   className="flex h-8 w-8 items-center justify-center rounded-lg transition-all duration-200 hover:bg-red-500/10"
                   style={{ color: "var(--text-secondary)" }}
-                  title="Cerrar conversación"
+                  title="Cerrar conversaciÃ³n"
                 >
                   <XCircle className="h-4 w-4" />
                 </button>
@@ -714,7 +714,7 @@ export default function InboxPage() {
                           >
                             {!isCustomer && msg.senderType === "agent" && (
                               <p className="mb-0.5 text-[10px] font-medium" style={{ color: "var(--accent-primary)" }}>
-                                Tú
+                                TÃº
                               </p>
                             )}
                             {!isCustomer && msg.senderType === "ai" && (
@@ -782,10 +782,10 @@ export default function InboxPage() {
                       <MessageSquare className="h-8 w-8" style={{ color: "var(--text-tertiary)" }} />
                     </div>
                     <p className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>
-                      Sin mensajes aún
+                      Sin mensajes aÃºn
                     </p>
                     <p className="mt-1 text-xs" style={{ color: "var(--text-tertiary)" }}>
-                      Envía el primer mensaje a {selected.customerName}
+                      EnvÃ­a el primer mensaje a {selected.customerName}
                     </p>
                   </motion.div>
                 )}
@@ -861,10 +861,10 @@ export default function InboxPage() {
                 <MessageSquare className="h-10 w-10" style={{ color: "var(--text-tertiary)" }} />
               </div>
               <p className="text-base font-medium" style={{ color: "var(--text-secondary)" }}>
-                Selecciona una conversación
+                Selecciona una conversaciÃ³n
               </p>
               <p className="mt-1 text-sm" style={{ color: "var(--text-tertiary)" }}>
-                Elige una conversación de la lista para empezar a chatear
+                Elige una conversaciÃ³n de la lista para empezar a chatear
               </p>
             </motion.div>
           </div>
@@ -995,7 +995,7 @@ export default function InboxPage() {
                   style={{ color: "var(--text-tertiary)" }}
                 >
                   <CalendarDays className="h-3.5 w-3.5" />
-                  Próxima cita
+                  PrÃ³xima cita
                 </h4>
                 {customerProfile?.appointments?.length ? (
                   <div className="space-y-1.5">
@@ -1042,7 +1042,7 @@ export default function InboxPage() {
                   style={{ color: "var(--text-tertiary)" }}
                 >
                   <TrendingUp className="h-3.5 w-3.5" />
-                  Métricas
+                  MÃ©tricas
                 </h4>
                 <div className="grid grid-cols-3 gap-2">
                   <div className="rounded-xl p-3 text-center" style={{ background: "var(--bg-surface-2)" }}>
@@ -1063,7 +1063,7 @@ export default function InboxPage() {
                         ? formatRelativeTime(customerProfile.metrics.lastActivity)
                         : "--"}
                     </p>
-                    <p className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>Última</p>
+                    <p className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>Ãšltima</p>
                   </div>
                 </div>
               </div>
@@ -1073,7 +1073,7 @@ export default function InboxPage() {
           <div className="flex flex-1 flex-col items-center justify-center px-6">
             <User className="mb-3 h-10 w-10" style={{ color: "var(--text-tertiary)" }} />
             <p className="text-sm text-center" style={{ color: "var(--text-tertiary)" }}>
-              Selecciona una conversación para ver el perfil del cliente
+              Selecciona una conversaciÃ³n para ver el perfil del cliente
             </p>
           </div>
         )}
@@ -1099,7 +1099,7 @@ export default function InboxPage() {
             >
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
-                  Transferir conversación
+                  Transferir conversaciÃ³n
                 </h3>
                 <button
                   onClick={() => setShowTransfer(false)}

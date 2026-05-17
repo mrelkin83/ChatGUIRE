@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { Plus, PauseCircle, PlayCircle, Trash2, Loader2, X, Building2, Gift, Calendar } from "lucide-react";
@@ -51,7 +51,7 @@ export default function SATenantsPage() {
       setDemoDays(14);
       fetchTenants();
     } catch (err: any) {
-      setError(err.message || "Error de conexión");
+      setError(err.message || "Error de conexiÃ³n");
     }
     setSaving(false);
   };
@@ -66,7 +66,7 @@ export default function SATenantsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-[#8b5cf6]" style={{ fontFamily: "var(--font-display)" }}>Tenants</h1>
+        <h1 className="text-xl font-bold text-[#8b5cf6]">Tenants</h1>
         <button onClick={() => setShowCreate(true)} className="btn-primary bg-gradient-to-r from-[#8b5cf6] to-[#ec4899] text-white text-sm">+ Nuevo Tenant</button>
       </div>
 
@@ -102,13 +102,13 @@ export default function SATenantsPage() {
             <div className="flex items-center justify-between mb-4"><h3 className="text-lg font-semibold">Nuevo Tenant</h3><button onClick={()=>setShowCreate(false)} className="text-[#8b8b9e]"><X className="h-5 w-5"/></button></div>
             <div className="space-y-4">
               <div><label className="block text-sm text-[#8b8b9e] mb-1.5">Nombre</label><input type="text" value={name} onChange={(e)=>setName(e.target.value)} className="input-field" placeholder="Mi Negocio"/></div>
-              <div><label className="block text-sm text-[#8b8b9e] mb-1.5">Vertical</label><select value={vertical} onChange={(e)=>setVertical(e.target.value)} className="input-field"><option value="retail_fashion">Retail Moda</option><option value="retail_tech">Tecnología</option><option value="health">Salud</option></select></div>
+              <div><label className="block text-sm text-[#8b8b9e] mb-1.5">Vertical</label><select value={vertical} onChange={(e)=>setVertical(e.target.value)} className="input-field"><option value="retail_fashion">Retail Moda</option><option value="retail_tech">TecnologÃ­a</option><option value="health">Salud</option></select></div>
               <div className="flex items-center gap-3">
                 <input id="demo" type="checkbox" checked={isDemo} onChange={(e)=>setIsDemo(e.target.checked)} className="h-4 w-4 rounded border-[#252536] bg-[#161622] text-[#8b5cf6] focus:ring-[#8b5cf6]"/>
                 <label htmlFor="demo" className="text-sm text-[#8b8b9e] flex items-center gap-2"><Gift className="h-3.5 w-3.5"/> Cuenta demo</label>
               </div>
               {isDemo && (
-                <div><label className="block text-sm text-[#8b8b9e] mb-1.5 flex items-center gap-2"><Calendar className="h-3.5 w-3.5"/> Días de prueba</label><input type="number" min={1} max={90} value={demoDays} onChange={(e)=>setDemoDays(Number(e.target.value))} className="input-field"/></div>
+                <div><label className="block text-sm text-[#8b8b9e] mb-1.5 flex items-center gap-2"><Calendar className="h-3.5 w-3.5"/> DÃ­as de prueba</label><input type="number" min={1} max={90} value={demoDays} onChange={(e)=>setDemoDays(Number(e.target.value))} className="input-field"/></div>
               )}
               {error && <p className="text-sm text-[#ef4444]">{error}</p>}
               <div className="flex justify-end gap-3 pt-2">

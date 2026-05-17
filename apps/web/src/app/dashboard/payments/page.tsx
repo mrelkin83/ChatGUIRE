@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -84,7 +84,7 @@ const DEMO_TRANSACTIONS: TransactionRecord[] = [
     status: "declined",
     createdAt: new Date(Date.now() - 30 * 3600000).toISOString(),
     reference: "PED-2024-0039",
-    paymentMethod: "Tarjeta de crédito",
+    paymentMethod: "Tarjeta de crÃ©dito",
   },
   {
     id: "wompi_trx_7B5E8C3F1A",
@@ -172,7 +172,7 @@ export default function PaymentsPage() {
 
   const handleSave = async () => {
     if (!publicKey || !privateKey) {
-      toast.error("Debes ingresar las llaves pública y privada");
+      toast.error("Debes ingresar las llaves pÃºblica y privada");
       return;
     }
     setSaving(true);
@@ -188,12 +188,12 @@ export default function PaymentsPage() {
       });
       if (res.ok) {
         setIsConfigured(true);
-        toast.success("Configuración de Wompi guardada correctamente");
+        toast.success("ConfiguraciÃ³n de Wompi guardada correctamente");
       } else {
-        toast.error("Error al guardar la configuración");
+        toast.error("Error al guardar la configuraciÃ³n");
       }
     } catch {
-      toast.error("Error de conexión al guardar");
+      toast.error("Error de conexiÃ³n al guardar");
     }
     setSaving(false);
   };
@@ -230,7 +230,7 @@ export default function PaymentsPage() {
       <div>
         <h1
           className="text-2xl font-bold"
-          style={{ fontFamily: "var(--font-display)" }}
+         
         >
           Pagos
         </h1>
@@ -253,7 +253,7 @@ export default function PaymentsPage() {
                 <div>
                   <p className="text-sm font-semibold">Pasarela de pagos</p>
                   <p className="text-xs text-[var(--text-secondary)]">
-                    Wompi {environment === "production" ? "Producción" : "Sandbox"}
+                    Wompi {environment === "production" ? "ProducciÃ³n" : "Sandbox"}
                   </p>
                 </div>
               </div>
@@ -272,9 +272,9 @@ export default function PaymentsPage() {
               <div>
                 <h2
                   className="text-base font-semibold"
-                  style={{ fontFamily: "var(--font-display)" }}
+                 
                 >
-                  Configuración de Wompi
+                  ConfiguraciÃ³n de Wompi
                 </h2>
                 <p className="text-xs text-[var(--text-secondary)] mt-1">
                   Conecta tu cuenta de Wompi para recibir pagos
@@ -321,7 +321,7 @@ export default function PaymentsPage() {
                         : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
                     )}
                   >
-                    Producción
+                    ProducciÃ³n
                   </button>
                   <motion.div
                     layoutId="env-indicator"
@@ -351,7 +351,7 @@ export default function PaymentsPage() {
               >
                 <div className="relative">
                   <Input
-                    label="Llave Pública"
+                    label="Llave PÃºblica"
                     value={publicKey}
                     onChange={(e) => setPublicKey(e.target.value)}
                     placeholder={environment === "sandbox" ? "pub_test_xxxxx" : "pub_prod_xxxxx"}
@@ -453,7 +453,7 @@ export default function PaymentsPage() {
                   icon={<Settings className="h-4 w-4" />}
                   className="w-full sm:w-auto"
                 >
-                  Guardar configuración
+                  Guardar configuraciÃ³n
                 </Button>
               </div>
             </div>
@@ -473,7 +473,7 @@ export default function PaymentsPage() {
               </h3>
               <Badge variant="gray">
                 <Clock className="h-3 w-3" />
-                Últimas {transactions.length}
+                Ãšltimas {transactions.length}
               </Badge>
             </div>
             <div className="overflow-x-auto">
@@ -483,10 +483,10 @@ export default function PaymentsPage() {
                     className="text-left text-xs font-semibold uppercase tracking-wider"
                     style={{ color: "var(--text-secondary)" }}
                   >
-                    <th className="px-5 py-3">ID Transacción</th>
+                    <th className="px-5 py-3">ID TransacciÃ³n</th>
                     <th className="px-5 py-3">Referencia</th>
                     <th className="px-5 py-3">Monto</th>
-                    <th className="px-5 py-3">Método</th>
+                    <th className="px-5 py-3">MÃ©todo</th>
                     <th className="px-5 py-3">Estado</th>
                     <th className="px-5 py-3">Fecha</th>
                   </tr>
@@ -554,7 +554,7 @@ export default function PaymentsPage() {
                   Sin transacciones
                 </p>
                 <p className="text-xs text-[var(--text-tertiary)] mt-1">
-                  Las transacciones aparecerán aquí cuando recibas pagos
+                  Las transacciones aparecerÃ¡n aquÃ­ cuando recibas pagos
                 </p>
               </div>
             )}

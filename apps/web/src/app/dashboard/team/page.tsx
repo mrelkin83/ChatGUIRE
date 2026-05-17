@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { API_BASE, dfetch, getTenantId } from "@/lib/api";
@@ -188,7 +188,7 @@ export default function TeamPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold" style={{ fontFamily: "var(--font-display)" }}>Equipo</h1>
+          <h1 className="text-2xl font-bold">Equipo</h1>
           <p className="mt-1 text-sm text-[#8b8b9e]">Gestiona agentes y departamentos</p>
         </div>
         <div className="flex gap-2">
@@ -329,7 +329,7 @@ export default function TeamPage() {
                   </span>
                   <span className={`flex items-center gap-1 ${dept.autoAssign ? 'text-[#22c55e]' : 'text-[#5a5a6e]'}`}>
                     <CircleDot className="h-3 w-3" />
-                    Auto-asignación {dept.autoAssign ? 'activa' : 'inactiva'}
+                    Auto-asignaciÃ³n {dept.autoAssign ? 'activa' : 'inactiva'}
                   </span>
                   <button onClick={() => setShowDeptMembers(dept.id)} className="ml-auto text-[#3b82f6] hover:underline flex items-center gap-1">
                     <UserPlus className="h-3 w-3" />
@@ -352,7 +352,7 @@ export default function TeamPage() {
                       );
                     })}
                     {dept.members.length > 3 && (
-                      <p className="text-xs text-[#5a5a6e] text-center">+{dept.members.length - 3} más</p>
+                      <p className="text-xs text-[#5a5a6e] text-center">+{dept.members.length - 3} mÃ¡s</p>
                     )}
                   </div>
                 )}
@@ -388,12 +388,12 @@ export default function TeamPage() {
                   type="text"
                   value={newDeptName}
                   onChange={(e) => setNewDeptName(e.target.value)}
-                  placeholder="Ventas, Soporte, Facturación..."
+                  placeholder="Ventas, Soporte, FacturaciÃ³n..."
                   className="input-field"
                 />
               </div>
               <div>
-                <label className="block text-sm text-[#8b8b9e] mb-1.5">Descripción</label>
+                <label className="block text-sm text-[#8b8b9e] mb-1.5">DescripciÃ³n</label>
                 <input
                   type="text"
                   value={newDeptDesc}
@@ -444,7 +444,7 @@ export default function TeamPage() {
             <div className="space-y-4">
               <div className="form-group">
                 <label className="form-label">Nombre completo</label>
-                <input type="text" value={newMemberName} onChange={(e) => setNewMemberName(e.target.value)} placeholder="María García" className="input-field" />
+                <input type="text" value={newMemberName} onChange={(e) => setNewMemberName(e.target.value)} placeholder="MarÃ­a GarcÃ­a" className="input-field" />
               </div>
               <div className="form-group">
                 <label className="form-label">Email</label>

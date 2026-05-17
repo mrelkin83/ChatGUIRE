@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
@@ -185,7 +185,7 @@ export default function DepartmentsPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold font-[family-name:var(--font-display)]">
+          <h1 className="text-2xl font-bold">
             Departamentos
           </h1>
           <p className="mt-1 text-sm text-[var(--text-secondary)]">
@@ -209,11 +209,11 @@ export default function DepartmentsPage() {
           <div className="h-16 w-16 rounded-2xl bg-[var(--bg-surface-3)] flex items-center justify-center mb-4">
             <Building2 className="h-8 w-8 text-[var(--text-tertiary)]" />
           </div>
-          <h3 className="text-lg font-semibold font-[family-name:var(--font-display)] mb-1">
+          <h3 className="text-lg font-semibold mb-1">
             No hay departamentos
           </h3>
           <p className="text-sm text-[var(--text-secondary)] max-w-sm mb-4">
-            Organiza a tu equipo creando departamentos para Ventas, Soporte, Facturación y más
+            Organiza a tu equipo creando departamentos para Ventas, Soporte, FacturaciÃ³n y mÃ¡s
           </p>
           <button
             onClick={() => {
@@ -243,7 +243,7 @@ export default function DepartmentsPage() {
                   <div className="flex items-center gap-3">
                     <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: dept.color }} />
                     <div>
-                      <h3 className="font-semibold font-[family-name:var(--font-display)]">
+                      <h3 className="font-semibold">
                         {dept.name}
                       </h3>
                       {dept.description && (
@@ -323,13 +323,13 @@ export default function DepartmentsPage() {
         <div className="space-y-4">
           <Input
             label="Nombre"
-            placeholder="Ventas, Soporte, Facturación..."
+            placeholder="Ventas, Soporte, FacturaciÃ³n..."
             value={newDept.name}
             onChange={(e) => setNewDept({ ...newDept, name: e.target.value })}
           />
           <div>
             <label className="text-[13px] text-[var(--text-secondary)] font-medium mb-1.5 block">
-              Descripción
+              DescripciÃ³n
             </label>
             <textarea
               placeholder="Departamento encargado de..."
@@ -386,7 +386,7 @@ export default function DepartmentsPage() {
             <div className="flex items-center gap-3 pb-4 border-b border-[var(--border-subtle)]">
               <div className="h-3 w-3 rounded-full" style={{ backgroundColor: selectedDept.color }} />
               <div>
-                <p className="font-semibold font-[family-name:var(--font-display)]">{selectedDept.name}</p>
+                <p className="font-semibold">{selectedDept.name}</p>
                 {selectedDept.description && (
                   <p className="text-xs text-[var(--text-tertiary)]">{selectedDept.description}</p>
                 )}
@@ -466,7 +466,7 @@ export default function DepartmentsPage() {
                   Eliminar este departamento
                 </p>
                 <p className="text-xs text-[var(--text-secondary)]">
-                  Esta acción no se puede deshacer. Los miembros no serán eliminados del sistema.
+                  Esta acciÃ³n no se puede deshacer. Los miembros no serÃ¡n eliminados del sistema.
                 </p>
                 <div className="flex gap-2">
                   <button

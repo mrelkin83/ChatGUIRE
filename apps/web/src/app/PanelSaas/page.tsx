@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { Building2, Users, DollarSign, MessageSquare, TrendingUp, Activity } from "lucide-react";
@@ -31,7 +31,7 @@ export default function SAPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-bold text-[#8b5cf6]" style={{ fontFamily: "var(--font-display)" }}>Dashboard SaaS</h1>
+      <h1 className="text-xl font-bold text-[#8b5cf6]">Dashboard SaaS</h1>
 
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
         {kpis.map((kpi) => (
@@ -50,7 +50,7 @@ export default function SAPage() {
       <div className="grid gap-4 lg:grid-cols-2">
         {/* Top Tenants */}
         <div className="glass-card p-5">
-          <h3 className="text-sm font-semibold text-[#8b8b9e] mb-4">Últimos Tenants</h3>
+          <h3 className="text-sm font-semibold text-[#8b8b9e] mb-4">Ãšltimos Tenants</h3>
           <div className="space-y-3">
             {data?.topTenants?.map((t) => (
               <div key={t.id} className="flex items-center justify-between">
@@ -63,7 +63,7 @@ export default function SAPage() {
 
         {/* Plan Distribution */}
         <div className="glass-card p-5">
-          <h3 className="text-sm font-semibold text-[#8b8b9e] mb-4">Distribución por Plan</h3>
+          <h3 className="text-sm font-semibold text-[#8b8b9e] mb-4">DistribuciÃ³n por Plan</h3>
           <div className="space-y-3">
             {data?.planStats?.map((p) => (
               <div key={p.name} className="flex items-center justify-between">

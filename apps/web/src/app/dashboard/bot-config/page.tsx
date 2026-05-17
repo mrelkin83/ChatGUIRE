@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -77,7 +77,7 @@ const CHANNELS = [
 const DEMO_MENUS: BotMenuRecord[] = [
   {
     id: "menu_1",
-    name: "Menú de bienvenida",
+    name: "MenÃº de bienvenida",
     triggerType: "welcome",
     triggerKeywords: [],
     channel: "all",
@@ -97,9 +97,9 @@ const DEMO_MENUS: BotMenuRecord[] = [
   },
   {
     id: "menu_3",
-    name: "Menú de precios",
+    name: "MenÃº de precios",
     triggerType: "keyword",
-    triggerKeywords: ["precio", "cuánto", "valor", "costo"],
+    triggerKeywords: ["precio", "cuÃ¡nto", "valor", "costo"],
     channel: "whatsapp",
     isActive: false,
     nodeCount: 5,
@@ -219,12 +219,12 @@ export default function BotConfigPage() {
         }),
       });
       if (res.ok) {
-        toast.success("Configuración del bot guardada correctamente");
+        toast.success("ConfiguraciÃ³n del bot guardada correctamente");
       } else {
-        toast.error("Error al guardar la configuración");
+        toast.error("Error al guardar la configuraciÃ³n");
       }
     } catch {
-      toast.error("Error de conexión");
+      toast.error("Error de conexiÃ³n");
     }
     setSaving(false);
   };
@@ -257,7 +257,7 @@ export default function BotConfigPage() {
 
   const handleCreateMenu = async () => {
     if (!newMenuName) {
-      toast.error("El nombre del menú es requerido");
+      toast.error("El nombre del menÃº es requerido");
       return;
     }
     try {
@@ -277,9 +277,9 @@ export default function BotConfigPage() {
         setMenus([{ ...menu, nodeCount: 0, updatedAt: new Date().toISOString() }, ...menus]);
         setShowCreateMenu(false);
         setNewMenuName("");
-        toast.success("Menú creado correctamente");
+        toast.success("MenÃº creado correctamente");
       } else {
-        toast.error("Error al crear el menú");
+        toast.error("Error al crear el menÃº");
       }
     } catch {
       const fakeMenu: BotMenuRecord = {
@@ -295,7 +295,7 @@ export default function BotConfigPage() {
       setMenus([fakeMenu, ...menus]);
       setShowCreateMenu(false);
       setNewMenuName("");
-      toast.success("Menú creado correctamente");
+      toast.success("MenÃº creado correctamente");
     }
   };
 
@@ -304,13 +304,13 @@ export default function BotConfigPage() {
       const res = await dfetch(`${API}/api/bot-menus/${id}`, { method: "DELETE" });
       if (res.ok) {
         setMenus(menus.filter((m) => m.id !== id));
-        toast.success("Menú eliminado");
+        toast.success("MenÃº eliminado");
       } else {
-        toast.error("Error al eliminar el menú");
+        toast.error("Error al eliminar el menÃº");
       }
     } catch {
       setMenus(menus.filter((m) => m.id !== id));
-      toast.success("Menú eliminado");
+      toast.success("MenÃº eliminado");
     }
   };
 
@@ -326,7 +326,7 @@ export default function BotConfigPage() {
       });
       if (res.ok) {
         setMenus(menus.map((m) => (m.id === id ? { ...m, isActive: newActive } : m)));
-        toast.success(newActive ? "Menú activado" : "Menú desactivado");
+        toast.success(newActive ? "MenÃº activado" : "MenÃº desactivado");
       }
     } catch {
       setMenus(menus.map((m) => (m.id === id ? { ...m, isActive: newActive } : m)));
@@ -339,7 +339,7 @@ export default function BotConfigPage() {
       if (res.ok) {
         const dup = await res.json();
         setMenus([dup, ...menus]);
-        toast.success("Menú duplicado");
+        toast.success("MenÃº duplicado");
       } else {
         const original = menus.find((m) => m.id === id);
         if (original) {
@@ -350,7 +350,7 @@ export default function BotConfigPage() {
             updatedAt: new Date().toISOString(),
           };
           setMenus([dup, ...menus]);
-          toast.success("Menú duplicado");
+          toast.success("MenÃº duplicado");
         }
       }
     } catch {
@@ -395,10 +395,10 @@ export default function BotConfigPage() {
               : m
           )
         );
-        toast.success("Menú actualizado");
+        toast.success("MenÃº actualizado");
       }
     } catch {
-      toast.success("Menú actualizado");
+      toast.success("MenÃº actualizado");
     }
     setEditMenuId(null);
   };
@@ -413,7 +413,7 @@ export default function BotConfigPage() {
           <Bot className="h-8 w-8" style={{ color: "var(--text-tertiary)" }} />
         </div>
         <p className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>
-          Error al cargar la configuración
+          Error al cargar la configuraciÃ³n
         </p>
         <Button variant="secondary" size="sm" onClick={() => { setError(null); setLoading(true); }}>
           Reintentar
@@ -474,13 +474,13 @@ export default function BotConfigPage() {
       <div>
         <h1
           className="text-2xl font-bold flex items-center gap-2"
-          style={{ fontFamily: "var(--font-display)" }}
+         
         >
           <Bot className="h-6 w-6" style={{ color: "var(--accent-amber)" }} />
-          Configuración del Bot
+          ConfiguraciÃ³n del Bot
         </h1>
         <p className="text-sm text-[var(--text-secondary)] mt-1">
-          Configura el comportamiento del bot y sus menús interactivos
+          Configura el comportamiento del bot y sus menÃºs interactivos
         </p>
       </div>
 
@@ -496,7 +496,7 @@ export default function BotConfigPage() {
         <TabButton
           id="menus"
           icon={<Menu className="h-4 w-4" />}
-          label="Menú Builder"
+          label="MenÃº Builder"
         />
       </div>
 
@@ -516,7 +516,7 @@ export default function BotConfigPage() {
                   label="Nombre del Bot"
                   value={botName}
                   onChange={(e) => setBotName(e.target.value)}
-                  placeholder="ChatGÜIRE Asistente"
+                  placeholder="ChatGÃœIRE Asistente"
                   icon={<Bot className="h-4 w-4" />}
                 />
 
@@ -527,7 +527,7 @@ export default function BotConfigPage() {
                   <textarea
                     value={welcomeMessage}
                     onChange={(e) => setWelcomeMessage(e.target.value)}
-                    placeholder="¡Hola! Soy el asistente virtual de ChatGÜIRE. ¿En qué puedo ayudarte?"
+                    placeholder="Â¡Hola! Soy el asistente virtual de ChatGÃœIRE. Â¿En quÃ© puedo ayudarte?"
                     rows={3}
                     className="input-field resize-none"
                     maxLength={500}
@@ -537,7 +537,7 @@ export default function BotConfigPage() {
                     style={{ color: "var(--text-tertiary)" }}
                   >
                     <span className="text-xs">
-                      Mensaje que se envía cuando un cliente inicia conversación
+                      Mensaje que se envÃ­a cuando un cliente inicia conversaciÃ³n
                     </span>
                     <span className="text-xs" style={{ fontFamily: "var(--font-mono)" }}>
                       {welcomeMessage.length}/500
@@ -562,7 +562,7 @@ export default function BotConfigPage() {
                     style={{ color: "var(--text-tertiary)" }}
                   >
                     <span className="text-xs">
-                      Se envía cuando el negocio está cerrado
+                      Se envÃ­a cuando el negocio estÃ¡ cerrado
                     </span>
                     <span className="text-xs" style={{ fontFamily: "var(--font-mono)" }}>
                       {offHoursMessage.length}/500
@@ -707,7 +707,7 @@ export default function BotConfigPage() {
                   <div>
                     <p className="text-sm font-medium">Bot activo</p>
                     <p className="text-xs text-[var(--text-tertiary)] mt-0.5">
-                      El bot responderá automáticamente según la configuración
+                      El bot responderÃ¡ automÃ¡ticamente segÃºn la configuraciÃ³n
                     </p>
                   </div>
                   <Toggle checked={isActive} onChange={setIsActive} />
@@ -719,7 +719,7 @@ export default function BotConfigPage() {
                     loading={saving}
                     icon={<Save className="h-4 w-4" />}
                   >
-                    Guardar configuración
+                    Guardar configuraciÃ³n
                   </Button>
                 </div>
               </div>
@@ -748,13 +748,13 @@ export default function BotConfigPage() {
                 }}
               >
                 <ExternalLink className="h-4 w-4" />
-                Ir al Editor Visual de Menús
+                Ir al Editor Visual de MenÃºs
               </a>
               <Button
                 onClick={() => setShowCreateMenu(true)}
                 icon={<Plus className="h-4 w-4" />}
               >
-                Crear Nuevo Menú
+                Crear Nuevo MenÃº
               </Button>
             </div>
 
@@ -897,10 +897,10 @@ export default function BotConfigPage() {
                       <Menu className="h-8 w-8" style={{ color: "var(--text-tertiary)" }} />
                     </div>
                     <p className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>
-                      No hay menús creados
+                      No hay menÃºs creados
                     </p>
                     <p className="text-xs text-[var(--text-tertiary)] mt-1">
-                      Crea tu primer menú de bienvenida para empezar
+                      Crea tu primer menÃº de bienvenida para empezar
                     </p>
                   </div>
                 </motion.div>
@@ -913,15 +913,15 @@ export default function BotConfigPage() {
       <Modal
         open={showCreateMenu}
         onClose={() => setShowCreateMenu(false)}
-        title="Nuevo Menú"
+        title="Nuevo MenÃº"
         maxWidth="max-w-md"
       >
         <div className="space-y-4">
           <Input
-            label="Nombre del menú"
+            label="Nombre del menÃº"
             value={newMenuName}
             onChange={(e) => setNewMenuName(e.target.value)}
-            placeholder="Ej: Menú principal"
+            placeholder="Ej: MenÃº principal"
             icon={<Menu className="h-4 w-4" />}
             autoFocus
           />
@@ -966,7 +966,7 @@ export default function BotConfigPage() {
               icon={<Plus className="h-4 w-4" />}
               disabled={!newMenuName}
             >
-              Crear Menú
+              Crear MenÃº
             </Button>
           </div>
         </div>
@@ -975,15 +975,15 @@ export default function BotConfigPage() {
       <Modal
         open={editMenuId !== null}
         onClose={() => setEditMenuId(null)}
-        title="Editar Menú"
+        title="Editar MenÃº"
         maxWidth="max-w-md"
       >
         <div className="space-y-4">
           <Input
-            label="Nombre del menú"
+            label="Nombre del menÃº"
             value={editMenuName}
             onChange={(e) => setEditMenuName(e.target.value)}
-            placeholder="Nombre del menú"
+            placeholder="Nombre del menÃº"
             icon={<Menu className="h-4 w-4" />}
           />
           <div>

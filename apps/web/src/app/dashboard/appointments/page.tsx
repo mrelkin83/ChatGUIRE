@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
@@ -106,7 +106,7 @@ export default function AppointmentsPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold font-[family-name:var(--font-display)]">
+          <h1 className="text-2xl font-bold">
             Citas
           </h1>
           <p className="mt-1 text-sm text-[var(--text-secondary)]">
@@ -125,7 +125,7 @@ export default function AppointmentsPage() {
         </div>
         <div>
           <p className="text-xs text-[var(--text-secondary)] uppercase tracking-wider">Hoy</p>
-          <p className="text-lg font-semibold font-[family-name:var(--font-display)] capitalize">
+          <p className="text-lg font-semibold capitalize">
             {today}
           </p>
         </div>
@@ -173,12 +173,12 @@ export default function AppointmentsPage() {
           <div className="h-16 w-16 rounded-2xl bg-[var(--bg-surface-3)] flex items-center justify-center mb-4">
             <CalendarDays className="h-8 w-8 text-[var(--text-tertiary)]" />
           </div>
-          <h3 className="text-lg font-semibold font-[family-name:var(--font-display)] mb-1">
+          <h3 className="text-lg font-semibold mb-1">
             {search || statusFilter ? "Sin resultados" : "No hay citas"}
           </h3>
           <p className="text-sm text-[var(--text-secondary)]">
             {search || statusFilter
-              ? "Intenta con otros filtros de búsqueda"
+              ? "Intenta con otros filtros de bÃºsqueda"
               : "Programa tu primera cita para comenzar"}
           </p>
         </GlassCard>
@@ -187,7 +187,7 @@ export default function AppointmentsPage() {
           {upcoming.length > 0 && (
             <div className="mb-4">
               <h3 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-3">
-                Próximas Citas ({upcoming.length})
+                PrÃ³ximas Citas ({upcoming.length})
               </h3>
             </div>
           )}
@@ -240,7 +240,7 @@ export default function AppointmentsPage() {
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <h4 className="font-semibold text-[var(--text-primary)] font-[family-name:var(--font-display)]">
+                        <h4 className="font-semibold text-[var(--text-primary)]">
                           {apt.serviceName}
                         </h4>
                         <Badge variant={statusConfig[apt.status]?.variant || "gray"} className="text-[10px]">
