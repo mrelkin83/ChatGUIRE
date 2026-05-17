@@ -410,7 +410,10 @@ step4_project_config() {
     mkdir -p "$PROJECT_DIR/scripts" "$PROJECT_DIR/backups" "$PROJECT_DIR/logs" "$PROJECT_DIR/uploads"
 
     if [[ ! -d "$PROJECT_DIR/.git" ]]; then
-        error_exit "No hay repo en $PROJECT_DIR. Clona primero: git clone https://github.com/mrelkin83/ChatGUIRE.git $PROJECT_DIR"
+        log "Repositorio no encontrado en $PROJECT_DIR — clonando desde GitHub..."
+        git clone https://github.com/mrelkin83/ChatGUIRE.git "$PROJECT_DIR" \
+            || error_exit "No se pudo clonar el repositorio. Verifica conectividad o clona manualmente: git clone https://github.com/mrelkin83/ChatGUIRE.git $PROJECT_DIR"
+        log "✅ Repositorio clonado en $PROJECT_DIR"
     fi
 
     ENCRYPTION_KEY=$(generate_encryption_key)
@@ -520,8 +523,10 @@ step5_build() {
     # Esperar a que el container API esté corriendo
     log "⏳ Esperando contenedor API..."
     retries=30
-    until docker compose -f "$COMPOSE_FILE" ps -q api >/dev/null 2>&1 && \
-          [[ $(docker compose -f "$COMPOSE_FILE" ps -a api --format '{{.State}}') == "running" ]]; do
+    until docker compose -f "$COMPOSE_FILE" ps -q api 2>/dev/null | grep -q . && \
+          docker inspect \
+              "$(docker compose -f "$COMPOSE_FILE" ps -q api 2>/dev/null)" \
+              --format '{{.State.Status}}' 2>/dev/null | grep -q "^running$"; do
         sleep 3
         retries=$((retries - 1))
         [[ $retries -eq 0 ]] && error_exit "API container no arrancó en 90s"
