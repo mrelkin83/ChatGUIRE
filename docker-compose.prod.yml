@@ -132,8 +132,7 @@ services:
 
   # ─── WAHA (WhatsApp) ──────────────────────────────────────────────────────
   waha:
-    # FIX A-4: Versión pineada (cambiar a la versión que uses)
-    image: devlikeapro/waha:2025.1.15
+    image: devlikeapro/waha:chrome-2026.1.1
     restart: unless-stopped
     env_file: .env
     environment:
